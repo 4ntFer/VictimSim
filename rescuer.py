@@ -6,6 +6,9 @@ import os
 import random
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
+
+from matplotlib import pyplot as plt
+from IPython.display import clear_output
 from abc import ABC, abstractmethod
 
 
@@ -109,6 +112,8 @@ class Rescuer(AbstractAgent):
         centroides = []
         centroides_anteriores = [None]*k  # A distancia de cada vítima em relação ao centroide associado à ela
         victims_phys_dis = []
+        x_axis = []
+        y_axys = []
         cluster = []
         victim_centroid_distance = []
 
@@ -117,34 +122,42 @@ class Rescuer(AbstractAgent):
             for j in range(len(victims)):
                 victim_centroid_distance[i].append(j)
 
-        max_phys_dis = 0  # Maior distancia física
+        max_phys_dis = 100000  # Maior distancia física
         aux_dis = 0
-        max_it = len(victims)*len(victims)
+        max_it = 100000
         it = 0
 
         # Determinando a vítima mais distante
-        for i in range(len(victims)):
-            aux_dis = math.sqrt(victims[i][0] * victims[i][0] + victims[i][1] * victims[i][1])
+        #for i in range(len(victims)):
+        #    aux_dis = math.sqrt(victims[i][0] * victims[i][0] + victims[i][1] * victims[i][1])
 
-            victims_phys_dis.append(aux_dis)
+        #    victims_phys_dis.append(aux_dis)
 
-            if aux_dis > max_phys_dis:
-                max_phys_dis = aux_dis
+        #    if aux_dis > max_phys_dis:
+        #        max_phys_dis = aux_dis
 
+
+        for v in victims:
+            x_axis.append(v[0])
+            y_axys.append(v[1])
 
         # Determinando centroides em posições aleatórias
         for i in range(k):
             # 4 é a gravidade máxima dos ferimentos da vítima
             centroides.append(
                 (
-                    random.uniform(0.0, max_phys_dis), random.uniform(0.0, 4.0)
+                    random.uniform(0.0, 20), random.uniform(0.0, 20)
                 )
             )
 
+        not_chage_count = 0
+        while it < max_it and not_chage_count < 20:
+            cluster = []
+            dots_x = []
+            dots_y = []
 
-
-        while it < max_it and centroides != centroides_anteriores:
-            cluster =  []
+            if(centroides == centroides_anteriores):
+                not_chage_count+=1
 
             for i in range(k):
                 cluster.append([])
@@ -153,8 +166,13 @@ class Rescuer(AbstractAgent):
 
             for i in range(k):
                 for j in range(len(victims)):
-                    distance_of_i_centroid = self.calcula_distancia(victims_phys_dis[j], victims[j][2], centroides[i][0],centroides[i][1])
+                    #distance_of_i_centroid = self.calcula_distancia(victims_phys_dis[j], victims[j][2], centroides[i][0],centroides[i][1])
+                    distance_of_i_centroid = self.calcula_distancia(x_axis[j], y_axys[j], centroides[i][0],centroides[i][1])
                     victim_centroid_distance[i][j] = distance_of_i_centroid
+                    #dots_x.append(victims_phys_dis[j])
+                    #dots_y.append(victims[j][2])
+                    dots_x.append(x_axis)
+                    dots_y.append(y_axys)
 
 
             for i in range(len(victims)):
@@ -166,12 +184,6 @@ class Rescuer(AbstractAgent):
                         cluster_index = j
 
                 cluster[cluster_index].append(i)
-                print("append", i, "in", cluster_index)
-
-                for c in cluster:
-                    print(c)
-
-                print("___________________________________")
 
 
             # Calculando novos centroides
@@ -184,37 +196,51 @@ class Rescuer(AbstractAgent):
                 if len(cluster[i]) > 0:
                     for j in range(len(cluster[i])):
                         victim_index = cluster[i][j]
-                        victim_dis_sum += victim_centroid_distance[i][victim_index]
-                        victim_label_sum += victims[victim_index][2]
+                        #victim_dis_sum += victim_centroid_distance[i][victim_index]
+                        #victim_label_sum += victims[victim_index][2]
+
+                        victim_dis_sum += x_axis[victim_index]
+                        victim_label_sum += y_axys[victim_index]
 
                     new_cent_x = victim_dis_sum / len(cluster[i])
                     new_cent_y = victim_label_sum / len(cluster[i])
 
                 else:
-                    new_cent_x = random.uniform(0.0, max_phys_dis)
-                    new_cent_x = random.uniform(0.0, 4.0)
+                    new_cent_x = random.uniform(0.0, 20)
+                    new_cent_y = random.uniform(0.0, 20)
 
                 centroides_anteriores[i] = centroides[i]
                 centroides[i] = (new_cent_x, new_cent_y)
 
+            x = []
+            y = []
 
+            for cent in centroides:
+                x.append(cent[0])
+                y.append(cent[1])
+
+            self.kmeans_visualize(x, y, dots_x, dots_y)
 
             it = it + 1
 
+        for c in cluster:
+            print(c)
 
+    def kmeans_visualize(self, cx, cy, vx, vy):
+        plt.clf()
+        plt.scatter(vx, vy)
+        plt.scatter(cx,cy)
+        plt.ion()
+        plt.show()
+        plt.pause(0.5)
 
 
     def calcula_distancia(self, x, y, x1, y1):
         c1 = 0
-        c2 = 0;
-        if x > x1:
-            c1 = x - x1
-        else:
-            c1 = x1 - x
+        c2 = 0
 
-        if y > y1:
-            c2 = y - y1
-        else:
-            y1 - y
+        c1 = x - x1
+        c2 = y - y1
+
 
         return math.sqrt(c1 * c1 + c2 * c2)

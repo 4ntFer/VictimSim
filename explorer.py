@@ -28,7 +28,7 @@ class Explorer(AbstractAgent):
         self.ends = []
         self.walls = []
         self.unback = []
-        self.victims = [] #(x,y,condição)
+        self.victims = [] #(x,y,index)
 
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
@@ -128,18 +128,18 @@ class Explorer(AbstractAgent):
             seq = self.body.check_for_victim()
             if seq >= 0:
                 vs = self.body.read_vital_signals(seq)
-                # vitima é representada por um conjunto de 3 valore.
+                # vitima é representada por um conjunto de 3 valores.
                 # (dx, dy, index)
 
-                self.victims.append((self.body.x, self.body.x, seq))
-                self.map.append((self.body.x, self.body.x, 3))
+                self.victims.append((self.body.x, self.body.y, seq))
+                self.map.append((self.body.x, self.body.y, 3))
 
                 self.rtime -= self.COST_READ
                 # print("exp: read vital signals of " + str(seq))
                 # print(vs)
             else:
                 # Inclui a posição livre no mapa
-                self.map.append((self.body.x, self.body.x, 0))
+                self.map.append((self.body.x, self.body.y, 0))
 
 
         return True
