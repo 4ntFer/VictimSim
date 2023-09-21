@@ -7,9 +7,7 @@ import random
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 
-from matplotlib import pyplot as plt
-from IPython.display import clear_output
-from abc import ABC, abstractmethod
+
 
 
 ## Classe que define o Agente Rescuer com um plano fixo
@@ -54,9 +52,10 @@ class Rescuer(AbstractAgent):
                 )
             )
 
+        self.update_map(mapa)
         self.clustering(victims_for_clustering, 4)
 
-        print("Mapa: ", mapa)
+        print("Mapa: ", self.unificated_map)
 
         self.max_x = max_x
         self.max_y = max_y
@@ -110,7 +109,7 @@ class Rescuer(AbstractAgent):
     # Recebe um novo mapa enviado por um explorador
     def update_map(self, map):
         for i in map:
-            if not self.unificated_map.contains(i):
+            if not self.unificated_map.__contains__(i):
                 self.unificated_map.append(i)
 
     def clustering(self, victims, k):
@@ -229,13 +228,7 @@ class Rescuer(AbstractAgent):
         for c in cluster:
             print(c)
 
-    def kmeans_visualize(self, cx, cy, vx, vy):
-        plt.clf()
-        plt.scatter(vx, vy)
-        plt.scatter(cx, cy)
-        plt.ion()
-        plt.show()
-        plt.pause(0.5)
+
 
     def calcula_distancia(self, x, y, x1, y1):
         c1 = 0

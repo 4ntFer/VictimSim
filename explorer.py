@@ -31,7 +31,7 @@ class Explorer(AbstractAgent):
         self.victims = []  # (x,y,index)
         self.max_x = 0
         self.max_y = 0
-        self.half_time = self.TLIM / 2
+        self.allPositions = []
 
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
@@ -47,12 +47,16 @@ class Explorer(AbstractAgent):
         dy = 0
 
         actions = []  # lista de ações possiveis
-                
 
         # No more actions, time almost ended
-        if self.rtime < 10.0:
+        if self.rtime < self.TLIM / 2:
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
+            while self.body.x != 0 or self.body.y != 0:
+                newstate = self.allPositions.pop()
+                dx = newstate[0]
+                dy = newstate[1]
+                result = self.body.walk(-dx, -dy)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
             self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
             return False
@@ -98,22 +102,19 @@ class Explorer(AbstractAgent):
                     # adicionando fins ao mapa
                     self.map.append((self.body.x + pos[0], self.body.y + pos[1], 2))
 
-        if self.rtime <= self.half_time:
-            newstate = self.visitedStates.pop()
-            dx = newstate[0]
-            dy = newstate[1]
-            result = self.body.walk(dx, dy)
-        elif not len(actions) == 0:
+        if not len(actions) == 0:
             newstate = random.choice(actions)  # Escolhe aleatoriamente uma ação
             dx = newstate[0]
             dy = newstate[1]
             self.unback.append((-dx, -dy))
+            self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
         else:  # Se não há ações disponíveis, ele volta uma posição com o 'self.unback.pop()'
             newstate = self.unback.pop()
             dx = newstate[0]
             dy = newstate[1]
+            self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
         if not ((self.body.x,
