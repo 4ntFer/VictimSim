@@ -12,7 +12,7 @@ def main(data_folder_name):
    
     # Set the path to config files and data files for the environment
     current_folder = os.path.abspath(os.getcwd())
-    data_folder_name = os.path.join("datasets", "aula")
+    data_folder_name = os.path.join("datasets", "data_tar1")
     data_folder = os.path.abspath(os.path.join(current_folder, data_folder_name))
 
     

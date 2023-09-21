@@ -32,6 +32,8 @@ class Explorer(AbstractAgent):
         self.max_x = 0
         self.max_y = 0
         self.allPositions = []
+        self.x = 0;
+        self.y = 0;
 
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
@@ -52,7 +54,7 @@ class Explorer(AbstractAgent):
         if self.rtime < self.TLIM / 2:
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
-            while len(self.allPositions) != 0 or self.body.x == 0 and self.body.y == 0:
+            while len(self.allPositions) != 0:
                 newstate = self.allPositions.pop()
                 dx = newstate[0]
                 dy = newstate[1]
@@ -89,18 +91,18 @@ class Explorer(AbstractAgent):
                 pos = (dx - 1, dy - 1)
 
             if obstacles[i] == 0:
-                if not ((self.body.x + pos[0], self.body.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
+                if not ((self.x + pos[0], self.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
                     actions.append(pos)
             elif obstacles[i] == 1:
                 if not pos in self.walls:
                     self.walls.append(pos)
                     # adicionando parede ao mapa
-                    self.map.append((self.body.x + pos[0], self.body.y + pos[1], 1))
+                    self.map.append((self.x + pos[0], self.y + pos[1], 1))
             else:
                 if not pos in self.ends:
                     self.ends.append(pos)
                     # adicionando fins ao mapa
-                    self.map.append((self.body.x + pos[0], self.body.y + pos[1], 2))
+                    self.map.append((self.x + pos[0], self.y + pos[1], 2))
 
         if not len(actions) == 0:
             newstate = random.choice(actions)  # Escolhe aleatoriamente uma ação
@@ -110,6 +112,7 @@ class Explorer(AbstractAgent):
             self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
+
         else:  # Se não há ações disponíveis, ele volta uma posição com o 'self.unback.pop()'
             newstate = self.unback.pop()
             dx = newstate[0]
@@ -117,15 +120,18 @@ class Explorer(AbstractAgent):
             self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
-        if not ((self.body.x,
-                 self.body.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
-            self.visitedStates.append((self.body.x, self.body.y))
+        self.x += dx
+        self.y += dy
+
+        if not ((self.x,
+                 self.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
+            self.visitedStates.append((self.x, self.y))
 
         if self.body.x > self.max_x:
-            self.max_x = self.body.x
+            self.max_x = self.x
 
         if self.body.y > self.max_y:
-            self.max_y = self.body.y
+            self.max_y = self.y
 
         # Update remaining time
         if dx != 0 and dy != 0:
@@ -146,15 +152,15 @@ class Explorer(AbstractAgent):
                 vs = self.body.read_vital_signals(seq)
                 # vitima é representada por um conjunto de 3 valores.
                 # (dx, dy, index)
-                if not ((self.body.x, self.body.y, seq) in self.victims):
-                    self.victims.append((self.body.x, self.body.y, seq))
-                    self.map.append((self.body.x, self.body.y, 3))
+                if not ((self.x, self.y, seq) in self.victims):
+                    self.victims.append((self.x, self.y, seq))
+                    self.map.append((self.x, self.y, 3))
 
                 self.rtime -= self.COST_READ
                 # print("exp: read vital signals of " + str(seq))
                 # print(vs)
             else:
                 # Inclui a posição livre no mapa
-                self.map.append((self.body.x, self.body.y, 0))
+                self.map.append((self.x, self.y, 0))
 
         return True
