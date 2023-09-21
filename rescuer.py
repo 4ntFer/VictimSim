@@ -33,11 +33,13 @@ class Rescuer(AbstractAgent):
         # Starts in IDLE state.
         # It changes to ACTIVE when the map arrives
         self.body.set_state(PhysAgent.IDLE)
+        self.max_x = 0  # O máximo em X que o explorador chegou
+        self.max_y = 0
 
         # planning
         self.__planner()
 
-    def go_save_victims(self, mapa, victims):
+    def go_save_victims(self, mapa, victims, max_x, max_y):
         """ The explorer sends the map containing the walls and
         victims' location. The rescuer becomes ACTIVE. From now,
         the deliberate method is called by the environment"""
@@ -55,6 +57,9 @@ class Rescuer(AbstractAgent):
         self.clustering(victims_for_clustering, 4)
 
         print("Mapa: ", mapa)
+
+        self.max_x = max_x
+        self.max_y = max_y
 
         self.body.set_state(PhysAgent.ACTIVE)
 
@@ -110,7 +115,7 @@ class Rescuer(AbstractAgent):
 
     def clustering(self, victims, k):
         centroides = []
-        centroides_anteriores = [None]*k  # A distancia de cada vítima em relação ao centroide associado à ela
+        centroides_anteriores = [None] * k  # A distancia de cada vítima em relação ao centroide associado à ela
         victims_phys_dis = []
         x_axis = []
         y_axys = []
@@ -128,14 +133,13 @@ class Rescuer(AbstractAgent):
         it = 0
 
         # Determinando a vítima mais distante
-        #for i in range(len(victims)):
+        # for i in range(len(victims)):
         #    aux_dis = math.sqrt(victims[i][0] * victims[i][0] + victims[i][1] * victims[i][1])
 
         #    victims_phys_dis.append(aux_dis)
 
         #    if aux_dis > max_phys_dis:
         #        max_phys_dis = aux_dis
-
 
         for v in victims:
             x_axis.append(v[0])
@@ -146,7 +150,7 @@ class Rescuer(AbstractAgent):
             # 4 é a gravidade máxima dos ferimentos da vítima
             centroides.append(
                 (
-                    random.uniform(0.0, 20), random.uniform(0.0, 20)
+                    random.uniform(0.0, self.max_x + 1), random.uniform(0.0, self.max_y + 1)  # Mais um pois, max_x pode ser por exemplo, 19, então para incluir 19 no random, tem que aumentar em um, max_x e max_y
                 )
             )
 
@@ -156,8 +160,8 @@ class Rescuer(AbstractAgent):
             dots_x = []
             dots_y = []
 
-            if(centroides == centroides_anteriores):
-                not_chage_count+=1
+            if centroides == centroides_anteriores:
+                not_chage_count += 1
 
             for i in range(k):
                 cluster.append([])
@@ -166,25 +170,24 @@ class Rescuer(AbstractAgent):
 
             for i in range(k):
                 for j in range(len(victims)):
-                    #distance_of_i_centroid = self.calcula_distancia(victims_phys_dis[j], victims[j][2], centroides[i][0],centroides[i][1])
-                    distance_of_i_centroid = self.calcula_distancia(x_axis[j], y_axys[j], centroides[i][0],centroides[i][1])
+                    # distance_of_i_centroid = self.calcula_distancia(victims_phys_dis[j], victims[j][2], centroides[i][0],centroides[i][1])
+                    distance_of_i_centroid = self.calcula_distancia(x_axis[j], y_axys[j], centroides[i][0],
+                                                                    centroides[i][1])
                     victim_centroid_distance[i][j] = distance_of_i_centroid
-                    #dots_x.append(victims_phys_dis[j])
-                    #dots_y.append(victims[j][2])
+                    # dots_x.append(victims_phys_dis[j])
+                    # dots_y.append(victims[j][2])
                     dots_x.append(x_axis)
                     dots_y.append(y_axys)
 
-
             for i in range(len(victims)):
                 cluster_index = 0
-                min_dis = max_phys_dis * 4/2
+                min_dis = max_phys_dis * 4 / 2
                 for j in range(k):
                     if min_dis > victim_centroid_distance[j][i]:
                         min_dis = victim_centroid_distance[j][i]
                         cluster_index = j
 
                 cluster[cluster_index].append(i)
-
 
             # Calculando novos centroides
             for i in range(k):
@@ -196,8 +199,8 @@ class Rescuer(AbstractAgent):
                 if len(cluster[i]) > 0:
                     for j in range(len(cluster[i])):
                         victim_index = cluster[i][j]
-                        #victim_dis_sum += victim_centroid_distance[i][victim_index]
-                        #victim_label_sum += victims[victim_index][2]
+                        # victim_dis_sum += victim_centroid_distance[i][victim_index]
+                        # victim_label_sum += victims[victim_index][2]
 
                         victim_dis_sum += x_axis[victim_index]
                         victim_label_sum += y_axys[victim_index]
@@ -206,8 +209,8 @@ class Rescuer(AbstractAgent):
                     new_cent_y = victim_label_sum / len(cluster[i])
 
                 else:
-                    new_cent_x = random.uniform(0.0, 20)
-                    new_cent_y = random.uniform(0.0, 20)
+                    new_cent_x = random.uniform(0.0, self.max_x + 1)
+                    new_cent_y = random.uniform(0.0, self.max_y + 1)
 
                 centroides_anteriores[i] = centroides[i]
                 centroides[i] = (new_cent_x, new_cent_y)
@@ -219,7 +222,7 @@ class Rescuer(AbstractAgent):
                 x.append(cent[0])
                 y.append(cent[1])
 
-            self.kmeans_visualize(x, y, dots_x, dots_y)
+            # self.kmeans_visualize(x, y, dots_x, dots_y)
 
             it = it + 1
 
@@ -229,11 +232,10 @@ class Rescuer(AbstractAgent):
     def kmeans_visualize(self, cx, cy, vx, vy):
         plt.clf()
         plt.scatter(vx, vy)
-        plt.scatter(cx,cy)
+        plt.scatter(cx, cy)
         plt.ion()
         plt.show()
         plt.pause(0.5)
-
 
     def calcula_distancia(self, x, y, x1, y1):
         c1 = 0
@@ -241,6 +243,5 @@ class Rescuer(AbstractAgent):
 
         c1 = x - x1
         c2 = y - y1
-
 
         return math.sqrt(c1 * c1 + c2 * c2)

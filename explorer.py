@@ -28,14 +28,15 @@ class Explorer(AbstractAgent):
         self.ends = []
         self.walls = []
         self.unback = []
-        self.victims = [] #(x,y,index)
+        self.victims = []  # (x,y,index)
+        self.max_x = 0
+        self.max_y = 0
 
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
         # base (x e y) e o elemento encontrado nela,
         # esse ultimo podendo ser CLEAR = 0, WALL = 1, END = 2
         # e VICTIM = 3
-
 
     def deliberate(self) -> bool:
         """ The agent chooses the next action. The simulator calls this
@@ -51,7 +52,7 @@ class Explorer(AbstractAgent):
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
-            self.resc.go_save_victims(self.map, self.victims)
+            self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
             return False
 
         # Check the neighborhood obstacles
@@ -87,12 +88,12 @@ class Explorer(AbstractAgent):
             elif obstacles[i] == 1:
                 if not pos in self.walls:
                     self.walls.append(pos)
-                    #adicionando parede ao mapa
+                    # adicionando parede ao mapa
                     self.map.append((self.body.x + pos[0], self.body.y + pos[1], 1))
             else:
                 if not pos in self.ends:
                     self.ends.append(pos)
-                    #adicionando fins ao mapa
+                    # adicionando fins ao mapa
                     self.map.append((self.body.x + pos[0], self.body.y + pos[1], 2))
 
         if not len(actions) == 0:
@@ -108,8 +109,15 @@ class Explorer(AbstractAgent):
             dy = newstate[1]
             result = self.body.walk(dx, dy)
 
-        if not ((self.body.x, self.body.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
+        if not ((self.body.x,
+                 self.body.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
             self.visitedStates.append((self.body.x, self.body.y))
+
+        if self.body.x > self.max_x:
+            self.max_x = self.body.x
+
+        if self.body.y > self.max_y:
+            self.max_y = self.body.y
 
         # Update remaining time
         if dx != 0 and dy != 0:
@@ -130,9 +138,9 @@ class Explorer(AbstractAgent):
                 vs = self.body.read_vital_signals(seq)
                 # vitima é representada por um conjunto de 3 valores.
                 # (dx, dy, index)
-
-                self.victims.append((self.body.x, self.body.y, seq))
-                self.map.append((self.body.x, self.body.y, 3))
+                if not ((self.body.x, self.body.y, seq) in self.victims):
+                    self.victims.append((self.body.x, self.body.y, seq))
+                    self.map.append((self.body.x, self.body.y, 3))
 
                 self.rtime -= self.COST_READ
                 # print("exp: read vital signals of " + str(seq))
@@ -140,6 +148,5 @@ class Explorer(AbstractAgent):
             else:
                 # Inclui a posição livre no mapa
                 self.map.append((self.body.x, self.body.y, 0))
-
 
         return True
