@@ -52,7 +52,7 @@ class Explorer(AbstractAgent):
         if self.rtime < self.TLIM / 2:
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
-            while self.body.x != 0 or self.body.y != 0:
+            while len(self.allPositions) != 0 or self.body.x == 0 and self.body.y == 0:
                 newstate = self.allPositions.pop()
                 dx = newstate[0]
                 dy = newstate[1]

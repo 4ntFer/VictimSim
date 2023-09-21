@@ -7,6 +7,8 @@ import random
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 
+from matplotlib import pyplot as plt
+
 
 
 
@@ -33,6 +35,7 @@ class Rescuer(AbstractAgent):
         self.body.set_state(PhysAgent.IDLE)
         self.max_x = 0  # O máximo em X que o explorador chegou
         self.max_y = 0
+        self.map_update_count = 0
 
         # planning
         self.__planner()
@@ -42,23 +45,26 @@ class Rescuer(AbstractAgent):
         victims' location. The rescuer becomes ACTIVE. From now,
         the deliberate method is called by the environment"""
         victims_for_clustering = []
-
-        for i in victims:
-            victims_for_clustering.append(
-                (
-                    i[0],
-                    i[1],
-                    self.body.read_vital_signals(i[2])[len(self.body.read_vital_signals(i[2])) - 1]
-                )
-            )
-
+        
         self.update_map(mapa)
-        self.clustering(victims_for_clustering, 4)
-
-        print("Mapa: ", self.unificated_map)
+        self.map_update_count+=1
+        # print("Mapa: ", self.unificated_map)
 
         self.max_x = max_x
         self.max_y = max_y
+
+        for i in self.unificated_map:
+            if(i[2] == 3):
+                victims_for_clustering.append(
+                    (
+                        i[0],
+                        i[1],
+                        self.body.read_vital_signals(i[2])[len(self.body.read_vital_signals(i[2])) - 1]
+                    )
+                )
+        
+        if(self.map_update_count == 4):
+            self.clustering(victims_for_clustering, 4)
 
         self.body.set_state(PhysAgent.ACTIVE)
 
@@ -221,7 +227,7 @@ class Rescuer(AbstractAgent):
                 x.append(cent[0])
                 y.append(cent[1])
 
-            # self.kmeans_visualize(x, y, dots_x, dots_y)
+            self.kmeans_visualize(x, y, dots_x, dots_y)
 
             it = it + 1
 
@@ -238,3 +244,11 @@ class Rescuer(AbstractAgent):
         c2 = y - y1
 
         return math.sqrt(c1 * c1 + c2 * c2)
+
+    def kmeans_visualize(self, cx, cy, vx, vy):
+        plt.clf()
+        plt.scatter(vx, vy)
+        plt.scatter(cx,cy)
+        plt.ion()
+        plt.show()
+        plt.pause(0.5)
