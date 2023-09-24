@@ -24,7 +24,7 @@ class Explorer(AbstractAgent):
         # Specific initialization for the rescuer
         self.resc = resc  # reference to the rescuer agent
         self.rtime = self.TLIM  # remaining time to explore
-        self.visitedStates = []
+        self.visitedStates = [(0,0)]
         self.ends = []
         self.walls = []
         self.unback = []
@@ -32,8 +32,8 @@ class Explorer(AbstractAgent):
         self.max_x = 0
         self.max_y = 0
         self.allPositions = []
-        self.x = 0;
-        self.y = 0;
+        self.x = 0
+        self.y = 0
 
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
@@ -60,7 +60,7 @@ class Explorer(AbstractAgent):
                 dy = newstate[1]
                 result = self.body.walk(-dx, -dy)
             print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
-            self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
+            #self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
             return False
 
         # Check the neighborhood obstacles
@@ -109,7 +109,6 @@ class Explorer(AbstractAgent):
             dx = newstate[0]
             dy = newstate[1]
             self.unback.append((-dx, -dy))
-            self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
 
@@ -117,20 +116,18 @@ class Explorer(AbstractAgent):
             newstate = self.unback.pop()
             dx = newstate[0]
             dy = newstate[1]
-            self.allPositions.append((dx, dy))
             result = self.body.walk(dx, dy)
 
         self.x += dx
         self.y += dy
 
-        if not ((self.x,
-                 self.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
+        if not ((self.x,self.y) in self.visitedStates):  # Para caso a posição atual dele não esteja em 'visitedStates'
             self.visitedStates.append((self.x, self.y))
 
-        if self.body.x > self.max_x:
+        if self.x > self.max_x:
             self.max_x = self.x
 
-        if self.body.y > self.max_y:
+        if self.y > self.max_y:
             self.max_y = self.y
 
         # Update remaining time
@@ -163,4 +160,125 @@ class Explorer(AbstractAgent):
                 # Inclui a posição livre no mapa
                 self.map.append((self.x, self.y, 0))
 
+        print(self.calc_heuristic())
+
+
+
         return True
+
+
+    def calc_heuristic(self):
+        states_in_graph = []
+        graph = []
+
+        for state in self.visitedStates:
+            graph.append([])
+
+
+        #Construindo grafo
+        for state in range(len(self.visitedStates)):
+            index = 0
+
+            if (self.visitedStates[state][0], self.visitedStates[state][1] - 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0], self.visitedStates[state][1] - 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] - 1, self.visitedStates[state][1] - 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] - 1, self.visitedStates[state][1] - 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] - 1, self.visitedStates[state][1]) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] - 1, self.visitedStates[state][1]))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] + 1, self.visitedStates[state][1]) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] + 1, self.visitedStates[state][1]))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] + 1, self.visitedStates[state][1] + 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] + 1, self.visitedStates[state][1] + 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0], self.visitedStates[state][1] + 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0], self.visitedStates[state][1] + 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] - 1, self.visitedStates[state][1] + 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] - 1, self.visitedStates[state][1] + 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+            if (self.visitedStates[state][0] + 1, self.visitedStates[state][1] - 1) in self.visitedStates:
+                index = self.visitedStates.index((self.visitedStates[state][0] + 1, self.visitedStates[state][1] - 1))
+                if not state in graph[index]:
+                    graph[index].append(state)
+
+                if not index in graph[state]:
+                    graph[state].append(index)
+
+
+
+
+         #dijskstra
+
+        visited = []
+        predecessor = []
+        distance = []
+
+        for vertex in graph:
+            visited.append(False)
+            predecessor.append(None)
+            distance.append(999999)
+
+        distance[0] = 0
+
+        while False in visited and 999999 in distance:
+            vertex_index = 0
+            min_dis = 999999
+
+            for i in range(len(visited)):
+                if not visited[i]:
+                    if distance[i]<=min_dis:
+                        vertex_index = i
+                        min_dis = distance[i]
+
+
+            adj = graph[vertex_index]
+            visited[vertex_index] = True
+            for i in adj:
+                if not visited[i]:
+                    if distance[vertex_index] + 1 < distance[i]:
+                        distance[i] = distance[vertex_index] + 1
+                        predecessor[i] = vertex_index
+
+
+
+
+        return distance[self.visitedStates.index((self.x, self.y))]

@@ -12,7 +12,7 @@ def main(data_folder_name):
    
     # Set the path to config files and data files for the environment
     current_folder = os.path.abspath(os.getcwd())
-    data_folder_name = os.path.join("datasets", "data_tar1")
+    data_folder_name = os.path.join("datasets", "data_12x12_10vic")
     data_folder = os.path.abspath(os.path.join(current_folder, data_folder_name))
 
     
@@ -28,9 +28,6 @@ def main(data_folder_name):
 
     # Explorer needs to know rescuer to send the map
     # that's why rescuer is instatiated before
-    exp = Explorer(env, explorer_file, resc)
-    exp = Explorer(env, explorer_file, resc)
-    exp = Explorer(env, explorer_file, resc)
     exp = Explorer(env, explorer_file, resc)
     # Run the environment simulator
     env.run()
