@@ -2,18 +2,15 @@
 ### @Author: Tacla, UTFPR
 ### It walks randomly in the environment looking for victims.
 
-import sys
-import os
 import random
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
-from abc import ABC, abstractmethod
 from math import sqrt
 
 
 class Explorer(AbstractAgent):
 
-    def __init__(self, env, config_file, resc):
+    def __init__(self, env, config_file, resc, name):
         """ Construtor do agente random on-line
         @param env referencia o ambiente
         @config_file: the absolute path to the explorer's config file
@@ -28,6 +25,7 @@ class Explorer(AbstractAgent):
         self.visitedStates = [(0, 0)]
         self.ends = []
         self.menor_f_base = 0
+        self.name = name
         self.walls = []
         self.pathHome = []
         self.voltar = False
@@ -49,6 +47,7 @@ class Explorer(AbstractAgent):
         return sqrt((position[0] - destiny[0]) ** 2 + (position[1] - destiny[1]) ** 2)
 
     def Astar(self, position):
+        global x, y
         self.COST_BACK = 0  # Custo para voltar para base
         disponiveis = []  # Estados disponiveis para o agente ir
         checked = []  # Checa se um estado já nao esta no caminho para casa
@@ -57,11 +56,12 @@ class Explorer(AbstractAgent):
         g = 0  # Variáveis importantes
         a = 0
         b = 0
-        print("POSICAO ATUAL:", position)
+        #print("POSICAO ATUAL:", position)
         while True:
             new = position.pop()
             menor_f_caminhos = 46532179034260
-            checked.append((new[0], new[1]))
+            if not(new[0], new[1]) in checked:
+                checked.append((new[0], new[1]))
             count = 0
 
             if (new[0], new[1] - 1) in self.visitedStates and not ((new[0], new[1] - 1) in checked):
@@ -127,12 +127,12 @@ class Explorer(AbstractAgent):
             if (new[0] + x) == 0 and (new[1] + y) == 0:  # Se chegou na base, acabou.
                 break
 
-        print("CUSTO para voltar:", self.COST_BACK)
-        print("AINDA possuo:", self.rtime)
-        if 4 < (self.rtime - self.COST_BACK):  # Teste para ver se a bateria esta acabando, dado que ele precisa fazer um movimento de volta, precisa sobrar o suficiente para uma ação (explico melhor no whats se precisar)
+        print(f"{self.name} CUSTO para voltar:", self.COST_BACK)
+        print(f"{self.name} AINDA possuo:", self.rtime)
+        if 6 < (self.rtime - self.COST_BACK):  # Teste para ver se a bateria esta acabando, dado que ele precisa fazer um movimento de volta, precisa sobrar o suficiente para uma ação (explico melhor no whats se precisar)
             self.pathHome = []
             self.pathHome = list(reversed(home))
-            print("HOME:", self.pathHome)
+            #print("HOME:", self.pathHome)
         else:  # Bateria acabando, hora de voltar pra base, faz mais uma ação de volta ainda.
             newstate = self.unback.pop()
             dx = newstate[0]
@@ -153,11 +153,11 @@ class Explorer(AbstractAgent):
         position = []
         # No more actions, time almost ended
         if self.voltar:
-            print("PAREI na posicao:", self.x, ",", self.y)
-            print("CAMINHO para casa:", self.pathHome)
+            #print("PAREI na posicao:", self.x, ",", self.y)
+            #print("CAMINHO para casa:", self.pathHome)
             # time to wake up the rescuer
             # pass the walls and the victims (here, they're empty)
-            print(f"{self.NAME} I believe I've remaining time of {self.rtime:.1f}")
+            print(f"{self.name} I believe I've remaining time of {self.rtime:.1f}")
             while len(self.pathHome) != 0:
                 newstate = self.pathHome.pop()
                 dx = newstate[0]
@@ -255,7 +255,6 @@ class Explorer(AbstractAgent):
         # Test the result of the walk action
         if result == PhysAgent.BUMPED:
             walls = 1  # build the map- to do
-            print(self.name() + ": wall or grid limit reached")
 
         if result == PhysAgent.EXECUTED:
             # check for victim returns -1 if there is no victim or the sequential
