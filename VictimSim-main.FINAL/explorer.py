@@ -133,126 +133,128 @@ class Explorer(AbstractAgent):
 
         actions = []  # lista de ações possiveis
         # No more actions, time almost ended
-        if self.pathHome["cost"] > (self.rtime - (self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ):
-            print("PAREI na posicao:", self.x, ",", self.y)
-            print("CAMINHO para casa:", self.pathHome["path"])
-            # time to wake up the rescuer
-            # pass the walls and the victims (here, they're empty)
-            print(f"{self.name} I believe I've remaining time of {self.rtime:.1f}")
-            while len(self.pathHome["path"]) != 0:
-                newstate = self.pathHome["path"].pop(0)
+        if self.pathHome["cost"] < (self.rtime - (self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ) and not self.voltar:
+            # Check the neighborhood obstacles
+            obstacles = self.body.check_obstacles()
+            for i in range(0, len(obstacles) - 1):
+
+                if i == 0:
+                    pos = (dx, dy - 1)
+
+                elif i == 1:
+                    pos = (dx + 1, dy - 1)
+
+                elif i == 2:
+                    pos = (dx + 1, dy)
+
+                elif i == 3:
+                    pos = (dx + 1, dy + 1)
+
+                elif i == 4:
+                    pos = (dx, dy + 1)
+
+                elif i == 5:
+                    pos = (dx - 1, dy + 1)
+
+                elif i == 6:
+                    pos = (dx - 1, dy)
+
+                else:
+                    pos = (dx - 1, dy - 1)
+
+                if obstacles[i] == 0:
+                    if not ((self.x + pos[0], self.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
+                        actions.append(pos)
+                elif obstacles[i] == 1:
+                    if not (self.x + pos[0], self.y + pos[1]) in self.walls:
+                        self.walls.append((self.x + pos[0], self.y + pos[1]))
+                        # adicionando parede ao mapa
+                        self.map.append((self.x + pos[0], self.y + pos[1], 1))
+                else:
+                    if not pos in self.ends:
+                        self.ends.append((self.x + pos[0], self.y + pos[1]))
+                        # adicionando fins ao mapa
+                        self.map.append((self.x + pos[0], self.y + pos[1], 2))
+
+            if not len(actions) == 0:
+                # newstate = actions.pop()
+                newstate = random.choice(actions)  # Escolhe aleatoriamente uma ação
+                dx = newstate[0]
+                dy = newstate[1]
+                self.unback.append((-dx, -dy))
+                result = self.body.walk(dx, dy)
+
+
+            else:  # Se não há ações disponíveis, ele volta uma posição com o 'self.unback.pop()'
+                newstate = self.unback.pop()
                 dx = newstate[0]
                 dy = newstate[1]
                 result = self.body.walk(dx, dy)
-                self.x += dx
-                self.y += dy
-            self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
-            print("DEBUG")
-            return False
 
-        # Check the neighborhood obstacles
-        obstacles = self.body.check_obstacles()
-        for i in range(0, len(obstacles) - 1):
+            self.x += dx
+            self.y += dy
 
-            if i == 0:
-                pos = (dx, dy - 1)
+            position = (self.x, self.y)
+            self.pathHome = self.Astar(position)
 
-            elif i == 1:
-                pos = (dx + 1, dy - 1)
+            if not ((self.x,
+                     self.y) in self.visitedStates) and not ((self.x,
+                                                              self.y) in self.walls):  # Para caso a posição atual dele não esteja em 'visitedStates'
+                self.visitedStates.append((self.x, self.y))
 
-            elif i == 2:
-                pos = (dx + 1, dy)
+            # print(self.x, self.y)
+            # print(self.pathHome["path"])
+            if self.body.x > self.max_x:
+                self.max_x = self.x
 
-            elif i == 3:
-                pos = (dx + 1, dy + 1)
+            if self.body.y > self.max_y:
+                self.max_y = self.y
 
-            elif i == 4:
-                pos = (dx, dy + 1)
-
-            elif i == 5:
-                pos = (dx - 1, dy + 1)
-
-            elif i == 6:
-                pos = (dx - 1, dy)
-
+            # Update remaining time
+            if dx != 0 and dy != 0:
+                self.rtime -= self.COST_DIAG
             else:
-                pos = (dx - 1, dy - 1)
+                self.rtime -= self.COST_LINE
 
-            if obstacles[i] == 0:
-                if not ((self.x + pos[0], self.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
-                    actions.append(pos)
-            elif obstacles[i] == 1:
-                if not (self.x + pos[0], self.y + pos[1]) in self.walls:
-                    self.walls.append((self.x + pos[0], self.y + pos[1]))
-                    # adicionando parede ao mapa
-                    self.map.append((self.x + pos[0], self.y + pos[1], 1))
-            else:
-                if not pos in self.ends:
-                    self.ends.append((self.x + pos[0], self.y + pos[1]))
-                    # adicionando fins ao mapa
-                    self.map.append((self.x + pos[0], self.y + pos[1], 2))
+            # Test the result of the walk action
+            if result == PhysAgent.BUMPED:
+                walls = 1  # build the map- to do
 
-        if not len(actions) == 0:
-            # newstate = actions.pop()
-            newstate = random.choice(actions)  # Escolhe aleatoriamente uma ação
-            dx = newstate[0]
-            dy = newstate[1]
-            self.unback.append((-dx, -dy))
-            result = self.body.walk(dx, dy)
+            if result == PhysAgent.EXECUTED:
+                # check for victim returns -1 if there is no victim or the sequential
+                # the sequential number of a found victim
+                seq = self.body.check_for_victim()
+                if seq >= 0:
+                    vs = self.body.read_vital_signals(seq)
+                    # vitima é representada por um conjunto de 3 valores.
+                    # (dx, dy, index)
+                    if not ((self.x, self.y, seq) in self.victims):
+                        self.victims.append((self.x, self.y, seq))
+                        self.map.append((self.x, self.y, 3))
 
-
-        else:  # Se não há ações disponíveis, ele volta uma posição com o 'self.unback.pop()'
-            newstate = self.unback.pop()
-            dx = newstate[0]
-            dy = newstate[1]
-            result = self.body.walk(dx, dy)
-
-        self.x += dx
-        self.y += dy
-
-        position = (self.x, self.y)
-        self.pathHome = self.Astar(position)
-
-        if not ((self.x,
-                 self.y) in self.visitedStates) and not ((self.x,
-                                                          self.y) in self.walls):  # Para caso a posição atual dele não esteja em 'visitedStates'
-            self.visitedStates.append((self.x, self.y))
-
-        #print(self.x, self.y)
-        #print(self.pathHome["path"])
-        if self.body.x > self.max_x:
-            self.max_x = self.x
-
-        if self.body.y > self.max_y:
-            self.max_y = self.y
-
-        # Update remaining time
-        if dx != 0 and dy != 0:
-            self.rtime -= self.COST_DIAG
+                    self.rtime -= self.COST_READ
+                    # print("exp: read vital signals of " + str(seq))
+                    # print(vs)
+                else:
+                    # Inclui a posição livre no mapa
+                    self.map.append((self.x, self.y, 0))
         else:
-            self.rtime -= self.COST_LINE
+            if not self.voltar:
+                self.voltar = True
+            #print("PAREI na posicao:", self.x, ",", self.y)
+            #print("CAMINHO para casa:", self.pathHome["path"])
+            # time to wake up the rescuer
+            # pass the walls and the victims (here, they're empty)
+            #print(f"{self.name} I believe I've remaining time of {self.rtime:.1f}")
+            homePos = self.pathHome["path"].pop(0)
+            dx = homePos[0]
+            dy = homePos[1]
+            result = self.body.walk(dx, dy)
+            self.x += dx
+            self.y += dy
 
-        # Test the result of the walk action
-        if result == PhysAgent.BUMPED:
-            walls = 1  # build the map- to do
-
-        if result == PhysAgent.EXECUTED:
-            # check for victim returns -1 if there is no victim or the sequential
-            # the sequential number of a found victim
-            seq = self.body.check_for_victim()
-            if seq >= 0:
-                vs = self.body.read_vital_signals(seq)
-                # vitima é representada por um conjunto de 3 valores.
-                # (dx, dy, index)
-                if not ((self.x, self.y, seq) in self.victims):
-                    self.victims.append((self.x, self.y, seq))
-                    self.map.append((self.x, self.y, 3))
-
-                self.rtime -= self.COST_READ
-                # print("exp: read vital signals of " + str(seq))
-                # print(vs)
-            else:
-                # Inclui a posição livre no mapa
-                self.map.append((self.x, self.y, 0))
+            if self.x == 0 and self.y == 0:
+                self.resc.go_save_victims(self.map, self.victims, self.max_x, self.max_y)
+                return False
 
         return True
