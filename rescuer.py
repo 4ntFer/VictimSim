@@ -30,6 +30,11 @@ class Rescuer(AbstractAgent):
         # esse ultimo podendo ser CLEAR = 0, WALL = 1, END = 2
         # e VICTIM = 3
 
+        self.walls = []
+        self.ends = []
+        self.victims = [] ## (x,y,seq)
+        self.know_space = []
+
         # Starts in IDLE state.
         # It changes to ACTIVE when the map arrives
         self.body.set_state(PhysAgent.IDLE)
@@ -45,6 +50,7 @@ class Rescuer(AbstractAgent):
         victims' location. The rescuer becomes ACTIVE. From now,
         the deliberate method is called by the environment"""
         victims_for_clustering = []
+        self.victims = victims
         
         self.update_map(mapa)
         self.map_update_count+=1
@@ -53,8 +59,10 @@ class Rescuer(AbstractAgent):
         self.max_x = max_x
         self.max_y = max_y
 
-        for i in self.unificated_map:
-            if(i[2] == 3):
+        for i in self.unificated_map:5
+            self.know_space.append((i[0], i[1]))
+
+            if i[2] == 3:
                 victims_for_clustering.append(
                     (
                         i[0],
@@ -63,8 +71,8 @@ class Rescuer(AbstractAgent):
                     )
                 )
         
-        if(self.map_update_count == 4):
-            self.clustering(victims_for_clustering, 4)
+
+        self.clustering(victims_for_clustering, 4)
 
         self.body.set_state(PhysAgent.ACTIVE)
 
@@ -118,6 +126,8 @@ class Rescuer(AbstractAgent):
             if not self.unificated_map.__contains__(i):
                 self.unificated_map.append(i)
 
+
+    #Retorna os clusters contendo o index da vitima no vetor victims que contem (x, y, seq)
     def clustering(self, victims, k):
         centroides = []
         centroides_anteriores = [None] * k  # A distancia de cada vítima em relação ao centroide associado à ela
@@ -227,12 +237,11 @@ class Rescuer(AbstractAgent):
                 x.append(cent[0])
                 y.append(cent[1])
 
-            self.kmeans_visualize(x, y, dots_x, dots_y)
+            #  self.kmeans_visualize(x, y, dots_x, dots_y)
 
             it = it + 1
 
-        for c in cluster:
-            print(c)
+        return cluster
 
 
 
@@ -252,3 +261,157 @@ class Rescuer(AbstractAgent):
         plt.ion()
         plt.show()
         plt.pause(0.5)
+
+    def build_plan(self, cluster):
+
+        ## State/cromossomos do AG é um vetor que diz a ordem quem que as vitimas são visitadas
+
+        ## Iniciando primeira geração com cromossomos aleatórios
+
+        ### Quantos cromossomos iniciais?
+
+        init_n_states = 10
+
+        gen = []
+
+        ## Encapsular o individuo é uma boa ideia para não precisar recalcular o seu fitness
+        for i in range(init_n_states):
+            individual = []
+
+            while self.calc_fitness(individual) > 0 and len(individual) < len(cluster):
+                random_victim = cluster[random.randint(0, len(cluster))]
+
+                while random_victim in individual:
+                    random_victim = cluster[random.randint(0, len(cluster))]
+
+                individual.append(random_victim)
+
+            if self.calc_fitness(individual) < 0:
+                individual.pop()
+
+            if not individual in gen:
+                gen.append(individual)
+
+
+
+        ##quantas iterações? quanto é o fitness ideal?
+
+        while True: ## Encontrar condição
+            survivors = self.natural_selection(gen)
+            gen = self.crossover(survivors, cluster)
+
+
+    def natural_selection(self, gen):
+        ## Por roleta de sorteio
+        total_fitness = 0
+        n_survivors = 2 # a definir
+        individual_portion = []
+        survivors = []
+
+        for individual in gen:
+            total_fitness = total_fitness + self.calc_fitness(individual)
+
+        init_interval =  0
+
+        for individual in gen:
+            final_interval = init_interval + total_fitness / self.calc_fitness(individual)
+            individual_portion.append((init_interval, final_interval))
+            init_interval = final_interval
+
+
+        while len(survivors) < n_survivors:
+            rand = random.randint(0,total_fitness)
+            survivor = None
+
+
+            for i in range(len(individual_portion)):
+                if rand > individual_portion[i][0] and rand < individual_portion[i][1]:
+                    survivor = gen[i]
+
+            if not survivor in survivors:
+                survivors.append(survivor)
+
+        return survivors
+
+    def crossover(self, gen,  cluster):
+        #Baseado em ordem
+        new_gen = []
+
+        for father in gen:
+            n_inherited = int(len(father)/3)
+            inherited = []
+
+            i = 0
+            while i < n_inherited:
+                index = random.randint(0, n_inherited)
+
+                if not index in inherited:
+                    inherited.append(index)
+                    i = i + 1
+
+            individual_son = [None] * n_inherited
+
+            for index in inherited:
+                individual_son[index] = father[index]
+
+            i = 0
+            while self.calc_fitness(individual_son) > 0 and len(individual_son) < len(cluster):
+                random_atribute = cluster[random.randint(0, len(cluster))]
+
+                while random_atribute in individual_son:
+                    random_atribute = cluster[random.randint(0, len(cluster))]
+
+                if i > len(individual_son):
+                    individual_son.append(random_atribute)
+                elif not i in inherited and not random_atribute in individual_son:
+                    individual_son[i] = random_atribute
+
+                if self.calc_fitness(individual_son) < 0:
+                    individual_son.pop()
+
+            new_gen.append(individual_son)
+
+        n_mutation = int(len(new_gen) * 0.5)
+
+        individual_mutants = []
+
+        i = 0
+        while i < n_mutation:
+            index = random.randint(0, len(new_gen))
+
+            if not index in individual_mutants:
+                individual_mutants.append(index)
+                i = i + 1
+
+        for index in individual_mutants:
+            atributeA = random.randint(0, len(new_gen[index]))
+            atributeB = random.randint(0, len(new_gen[index]))
+
+            while atributeB == atributeA:
+                atributeB = random.randint(0, len(new_gen[index]))
+
+            aux = new_gen[index][atributeA]
+
+            new_gen[index][atributeA] = new_gen[index][atributeB]
+            new_gen[index][atributeB] = aux
+
+        return new_gen
+
+
+
+    def calc_fitness(self, states):
+        saved_victims = len(states)
+        cost = 0
+
+        victim_pos = (self.victims[0][0], self.victims[0][1]) ## (x,y)
+        cost = self.Astar((0,0), victim_pos, self.unificated_map, self.walls, self.ends)["cost"]
+
+        for i in range(len(states)-1):
+            origin = victim_pos
+            victim_pos = victim_pos = (self.victims[i+1][0], self.victims[i+1][1]) ## (x,y)
+            cost = cost + self.Astar(origin, victim_pos, self.unificated_map, self.walls, self.ends)["cost"]
+
+        origin = victim_pos
+        cost = cost + self.Astar(origin, (0,0), self.unificated_map, self.walls, self.ends)["cost"]
+
+        return saved_victims*(self.rtime - cost)

@@ -79,3 +79,84 @@ class AbstractAgent:
 
         pass
 
+    def costH(self, position, destiny):
+        return int(sqrt((position[0] - destiny[0]) ** 2 + (position[1] - destiny[1]) ** 2))
+
+    def Astar(self, position, destiny, known_states, walls, ends):
+        disponiveis = {}
+        checado = {}
+        fronteira = []
+        destino = destiny
+        disponiveis[position] = {"g(n)": 0, "h(n)": self.costH(position, destino), "pai": None}
+        while True:
+            atual = None
+            menor_f_caminho = 678542906
+            for i in disponiveis.keys():
+                if (disponiveis[i]["g(n)"] + disponiveis[i]["h(n)"]) <= menor_f_caminho:
+                    menor_f_caminho = disponiveis[i]["g(n)"] + disponiveis[i]["h(n)"]
+                    atual = i
+            checado[atual] = disponiveis[atual]
+            del disponiveis[atual]
+            if atual == destino:
+                break
+
+            if not (atual[0], atual[1] - 1) in checado and (atual[0], atual[1] - 1) in known_states:
+                fronteira.append((0, -1))
+
+            if not (atual[0] + 1, atual[1] - 1) in checado and (
+                    atual[0] + 1, atual[1] - 1) in known_states:
+                fronteira.append((1, -1))
+
+            if not (atual[0] + 1, atual[1]) in checado and (atual[0] + 1, atual[1]) in known_states:
+                fronteira.append((1, 0))
+
+            if not (atual[0] + 1, atual[1] + 1) in checado and (
+                    atual[0] + 1, atual[1] + 1) in known_states:
+                fronteira.append((1, 1))
+
+            if not (atual[0], atual[1] + 1) in checado and (atual[0], atual[1] + 1) in known_states:
+                fronteira.append((0, 1))
+
+            if not (atual[0] - 1, atual[1] + 1) in checado and (
+                    atual[0] - 1, atual[1] + 1) in known_states:
+                fronteira.append((-1, 1))
+
+            if not (atual[0] - 1, atual[1]) in checado and (atual[0] - 1, atual[1]) in known_states:
+                fronteira.append((-1, 0))
+
+            if not (atual[0] - 1, atual[1] - 1) in checado and (
+                    atual[0] - 1, atual[1] - 1) in known_states:
+                fronteira.append((-1, -1))
+
+            for opt in fronteira:
+                nextPosOpt = (atual[0] + opt[0], atual[1] + opt[1])
+                if nextPosOpt in checado.keys() or nextPosOpt in walls or nextPosOpt in ends:
+                    continue
+
+                # gets the cost of the movement
+                if opt[0] != 0 and opt[1] != 0:
+                    movCost = self.COST_DIAG
+                else:
+                    movCost = self.COST_LINE
+
+                if nextPosOpt not in disponiveis.keys():
+                    disponiveis[nextPosOpt] = {
+                        "g(n)": checado[atual]["g(n)"] + movCost,
+                        "h(n)": self.costH(nextPosOpt, destino),
+                        "pai": atual,
+                    }
+                elif (checado[atual]["g(n)"] + movCost) < disponiveis[nextPosOpt]["g(n)"]:
+                    disponiveis[nextPosOpt]["g(n)"] = checado[atual]["g(n)"] + movCost
+                    disponiveis[nextPosOpt]["pai"] = atual
+            fronteira = []
+
+            # Builds path
+        atual = destino
+        path = []
+
+        while not atual == position:
+            newMov = (atual[0] - checado[atual]["pai"][0], atual[1] - checado[atual]["pai"][1])
+            path.append(newMov)
+            atual = checado[atual]["pai"]
+        return {"path": list(reversed(path)), "cost": checado[destino]["g(n)"]}
+
