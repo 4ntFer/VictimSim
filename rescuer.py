@@ -10,12 +10,10 @@ from physical_agent import PhysAgent
 from matplotlib import pyplot as plt
 
 
-
-
 ## Classe que define o Agente Rescuer com um plano fixo
 class Rescuer(AbstractAgent):
-    def __init__(self, env, config_file):
-        """ 
+    def __init__(self, env, config_file, name):
+        """
         @param env: a reference to an instance of the environment class
         @param config_file: the absolute path to the agent's config file"""
 
@@ -29,10 +27,10 @@ class Rescuer(AbstractAgent):
         # base (x e y) e o elemento encontrado nela,
         # esse ultimo podendo ser CLEAR = 0, WALL = 1, END = 2
         # e VICTIM = 3
-
+        self.name = name
         self.walls = []
         self.ends = []
-        self.victims = [] ## (x,y,seq,condição)
+        self.victims = []  ## (x,y,seq,condição)
         self.know_space = []
 
         # Starts in IDLE state.
@@ -51,6 +49,8 @@ class Rescuer(AbstractAgent):
         self.ends = ends
         self.walls = walls
 
+        print("Nome: ", self.name, "Cluster: ", cluster)
+
         road_map = self.build_road_map(cluster)
 
         self.planner(road_map)
@@ -65,12 +65,12 @@ class Rescuer(AbstractAgent):
 
         # This is a off-line trajectory plan, each element of the list is
         # a pair dx, dy that do the agent walk in the x-axis and/or y-axis
-        prev_victim = (0,0)
+        prev_victim = (0, 0)
         for victim_index in road_map:
             current_victim = self.victims[victim_index]
             partial_plan = super().Astar(
-                (prev_victim[0], prev_victim[1]), #origem
-                (current_victim[0], current_victim[1]), #destino
+                (prev_victim[0], prev_victim[1]),  # origem
+                (current_victim[0], current_victim[1]),  # destino
                 self.know_space, self.walls, self.ends
             )
 
@@ -120,16 +120,16 @@ class Rescuer(AbstractAgent):
 
         ### Quantos cromossomos iniciais?
 
-        init_n_states = 80
-
-        gen = []
-
+        init_n_states = 40
+        gen = {0: {"Individuo": [], "Fitness": 0}}
+        fitnessIndividual = 0
         ## Encapsular o individuo é uma boa ideia para não precisar recalcular o seu fitness
         i = 0
+        repeated = False
         while i < init_n_states:
             individual = []
 
-            while self.calc_fitness(individual) >= 0 and len(individual) < len(cluster):
+            while fitnessIndividual >= 0 and len(individual) < len(cluster):
                 random_victim = cluster[random.randint(0, len(cluster) - 1)]
 
                 while random_victim in individual:
@@ -137,69 +137,88 @@ class Rescuer(AbstractAgent):
 
                 individual.append(random_victim)
 
-            if self.calc_fitness(individual) < 0:
+            fitnessIndividual = self.calc_fitness(individual)
+            if fitnessIndividual < 0:
                 individual.pop()
 
-            if not individual in gen:
-                gen.append(individual)
+
+            for individuals in list(gen):
+                if individual == gen[individuals]["Individuo"]:
+                    repeated = True
+
+            print(repeated, i)
+
+            if not repeated:
+                gen[i] = {"Individuo": individual, "Fitness": fitnessIndividual}
                 i = i + 1
+                repeated = False
 
-
+        print("DEBUG", self.name)
         ##quantas iterações? quanto é o fitness ideal?
 
-        for i in range(10): ## Encontrar condição
+        for i in range(10):  ## Encontrar condição
+            print("Iteracao", i)
             survivors = self.natural_selection(gen)
             gen = self.crossover(survivors, cluster)
 
         max_fitness = 0
         individual_w_max_fitness = None
         for individual in gen:
-            if self.calc_fitness(individual) > max_fitness:
-                individual_w_max_fitness = individual
-                max_fitness = self.calc_fitness(individual)
+            if gen[individual]["Fitness"] > max_fitness:
+                individual_w_max_fitness = gen[individual]["Filhos"]
+                max_fitness = gen[individual]["Fitness"]
 
         return individual_w_max_fitness
-
 
     def natural_selection(self, gen):
         ## Por roleta de sorteio
         total_fitness = 0
-        n_survivors = math.ceil(len(gen)/2) # a definir
+        n_survivors = math.ceil(len(gen) / 2)  # a definir
         individual_portion = []
-        survivors = []
+        fitnessSurvivor = 0
+        repeated = False
+        survivors = {0: {"Sobreviventes": [], "Fitness": 0}}
+        i = 0
+        j = 0
+        for individual in list(gen):
+            total_fitness = total_fitness + gen[individual]["Fitness"]
 
-        for individual in gen:
-            total_fitness = total_fitness + self.calc_fitness(individual)
+        init_interval = 0
 
-        init_interval =  0
-
-        for individual in gen:
-            final_interval = init_interval + total_fitness / self.calc_fitness(individual)
+        for individual in list(gen):
+            final_interval = init_interval + total_fitness / gen[individual]["Fitness"]
             individual_portion.append((init_interval, final_interval))
             init_interval = final_interval
 
-
         while len(survivors) < n_survivors:
-            rand = random.randint(0,total_fitness)
+            rand = random.randint(0, total_fitness)
             survivor = None
 
-
             for i in range(len(individual_portion)):
-                if rand > individual_portion[i][0] and rand < individual_portion[i][1]:
-                    survivor = gen[i]
+                if individual_portion[i][0] < rand < individual_portion[i][1]:
+                    survivor = gen[i]["Individuo"]
+                    fitnessSurvivor = gen[i]["Fitness"]
 
-            if not survivor in survivors and survivor != None:
-                survivors.append(survivor)
+
+            for individuals in list(survivors):
+                if individual == survivors[individuals]["Sobreviventes"]:
+                    repeated = True
+
+            if not repeated and survivor is not None:
+                survivors[j] = {"Sobreviventes": survivor, "Fitness": fitnessSurvivor}
+                j = j + 1
+
 
         return survivors
 
-    def crossover(self, gen,  cluster):
-        #Baseado em ordem
-        new_gen = []
-
+    def crossover(self, gen, cluster):
+        # Baseado em ordem
+        new_gen = {0: {"Filhos": [], "Fitness": 0}}
+        individual_son_fitness = 0
+        j = 0 # Usando pro dicionário new_gen, pensar em algo depois
         for father in gen:
             for j in range(2):
-                n_inherited = int(len(father)/2)
+                n_inherited = int(len(gen[father]["Sobreviventes"]) / 2)
                 inherited = []
                 individual_son = []
 
@@ -211,33 +230,33 @@ class Rescuer(AbstractAgent):
                         inherited.append(index)
                         i = i + 1
 
-                while self.calc_fitness(individual_son) >= 0 and len(individual_son) < len(cluster):
+                while individual_son_fitness >= 0 and len(individual_son) < len(cluster):
                     random_victim = cluster[random.randint(0, len(cluster) - 1)]
 
                     while random_victim in individual_son:
                         random_victim = cluster[random.randint(0, len(cluster) - 1)]
 
                     individual_son.append(random_victim)
+                    individual_son_fitness = self.calc_fitness(individual_son)
 
-                if self.calc_fitness(individual_son) < 0:
+                if individual_son_fitness < 0:
                     individual_son.pop()
 
-
                 for index in inherited:
-                    if father[index] in individual_son:
-                        index_on_son = individual_son.index(father[index])
+                    if gen[father]["Sobreviventes"][index] in individual_son:
+                        index_on_son = individual_son.index(gen[father]["Sobreviventes"][index])
                         random_index = random.randint(0, len(individual_son) - 1)
 
                         individual_son[random_index] = individual_son[index]
-                        individual_son[index] = father[index]
+                        individual_son[index] = gen[father]["Sobreviventes"][index]
 
                     else:
-                        individual_son[index] = father[index]
+                        individual_son[index] = gen[father]["Sobreviventes"][index]
 
-                new_gen.append(individual_son)
+                new_gen[j] = {"Filhos": individual_son, "Fitness": individual_son_fitness}
+                j = j + 1
 
-
-        n_mutation = int(len(new_gen) * 0.05)
+        n_mutation = int(len(new_gen) * 0.01)
 
         individual_mutants = []
 
@@ -263,8 +282,6 @@ class Rescuer(AbstractAgent):
 
         return new_gen
 
-
-
     def calc_fitness(self, states):
         saved_victims = len(states)
         cost = 0
@@ -272,15 +289,15 @@ class Rescuer(AbstractAgent):
         if None in states:
             return 0
 
-        victim_pos = (self.victims[0][0], self.victims[0][1]) ## (x,y)
-        cost = self.Astar((0,0), victim_pos, self.know_space, self.walls, self.ends)["cost"]
+        victim_pos = (self.victims[0][0], self.victims[0][1])  ## (x,y)
+        cost = self.Astar((0, 0), victim_pos, self.know_space, self.walls, self.ends)["cost"]
 
-        for i in range(len(states)-1):
+        for i in range(len(states) - 1):
             origin = victim_pos
-            victim_pos = victim_pos = (self.victims[i+1][0], self.victims[i+1][1]) ## (x,y)
+            victim_pos = victim_pos = (self.victims[i + 1][0], self.victims[i + 1][1])  ## (x,y)
             cost = cost + self.Astar(origin, victim_pos, self.know_space, self.walls, self.ends)["cost"]
 
         origin = victim_pos
-        cost = cost + self.Astar(origin, (0,0), self.know_space, self.walls, self.ends)["cost"]
+        cost = cost + self.Astar(origin, (0, 0), self.know_space, self.walls, self.ends)["cost"]
 
-        return saved_victims*(self.rtime + 1 - cost)
+        return saved_victims * (self.rtime + 1 - cost)
