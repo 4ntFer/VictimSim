@@ -2,12 +2,12 @@
 ### @Author: Tacla (UTFPR)
 ### It has the default methods for all the agents supposed to run in
 ### the environment
-
+import math
 import os
 import random
 from abc import ABC, abstractmethod
 from physical_agent import PhysAgent
-
+from math import sqrt
 
 class AbstractAgent:
     """ This class represents a generic agent and must be implemented by a concrete class. """
