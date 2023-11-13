@@ -4,6 +4,7 @@
 import math
 import os
 import random
+import numpy as np
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 
@@ -32,6 +33,7 @@ class Rescuer(AbstractAgent):
         self.ends = []
         self.victims = []  ## (x,y,seq,condição)
         self.know_space = []
+        self.savedVicitms = []
 
         # Starts in IDLE state.
         # It changes to ACTIVE when the map arrives
@@ -49,7 +51,7 @@ class Rescuer(AbstractAgent):
         self.ends = ends
         self.walls = walls
 
-        print("Nome: ", self.name, "Cluster: ", cluster)
+        # print("Nome: ", self.name, "Cluster: ", cluster)
 
         road_map = self.build_road_map(cluster)
 
@@ -109,6 +111,10 @@ class Rescuer(AbstractAgent):
             seq = self.body.check_for_victim()
             if seq >= 0:
                 res = self.body.first_aid(seq)  # True when rescued
+                if res:
+                    for victim in self.victims:
+                        if victim[2] == seq and not (victim[0], victim[1], victim[2], victim[3]) in self.savedVicitms:
+                            self.savedVicitms.append((victim[2], victim[0], victim[1], 0, victim[3]))
 
         return True
 
@@ -119,17 +125,17 @@ class Rescuer(AbstractAgent):
         ## Iniciando primeira geração com cromossomos aleatórios
 
         ### Quantos cromossomos iniciais?
-
-        init_n_states = 40
-        gen = {0: {"Individuo": [], "Fitness": 0}}
+        init_n_states = math.factorial(len(cluster))
+        bound = 80
+        gen = {0: {"Individuo": [], "Fitness": 1}}
         fitnessIndividual = 0
         ## Encapsular o individuo é uma boa ideia para não precisar recalcular o seu fitness
         i = 0
         repeated = False
-        while i < init_n_states:
+        while i < init_n_states and i < bound:
             individual = []
 
-            while fitnessIndividual >= 0 and len(individual) < len(cluster):
+            while len(individual) < len(cluster):
                 random_victim = cluster[random.randint(0, len(cluster) - 1)]
 
                 while random_victim in individual:
@@ -137,27 +143,33 @@ class Rescuer(AbstractAgent):
 
                 individual.append(random_victim)
 
+            while not repeated:
+                for individuals in list(gen):
+                    if individual == gen[individuals]["Individuo"]:
+                        repeated = True
+
+            print(repeated, i)
+
+            if repeated:
+                continue
+
             fitnessIndividual = self.calc_fitness(individual)
             if fitnessIndividual < 0:
                 individual.pop()
-
-
-            for individuals in list(gen):
-                if individual == gen[individuals]["Individuo"]:
-                    repeated = True
-
-            print(repeated, i)
+                continue
 
             if not repeated:
                 gen[i] = {"Individuo": individual, "Fitness": fitnessIndividual}
                 i = i + 1
-                repeated = False
 
-        print("DEBUG", self.name)
+            repeated = False
+
         ##quantas iterações? quanto é o fitness ideal?
 
         for i in range(10):  ## Encontrar condição
-            print("Iteracao", i)
+            if len(gen) <= 2:
+                break
+            print("Iteração:", i)
             survivors = self.natural_selection(gen)
             gen = self.crossover(survivors, cluster)
 
@@ -165,7 +177,7 @@ class Rescuer(AbstractAgent):
         individual_w_max_fitness = None
         for individual in gen:
             if gen[individual]["Fitness"] > max_fitness:
-                individual_w_max_fitness = gen[individual]["Filhos"]
+                individual_w_max_fitness = gen[individual]["Individuo"]
                 max_fitness = gen[individual]["Fitness"]
 
         return individual_w_max_fitness
@@ -173,12 +185,13 @@ class Rescuer(AbstractAgent):
     def natural_selection(self, gen):
         ## Por roleta de sorteio
         total_fitness = 0
+        final_interval = 0.0
         n_survivors = math.ceil(len(gen) / 2)  # a definir
+        # n_survivors = len(gen) * 0.6
         individual_portion = []
         fitnessSurvivor = 0
         repeated = False
-        survivors = {0: {"Sobreviventes": [], "Fitness": 0}}
-        i = 0
+        survivors = {0: {"Individuo": [], "Fitness": 0}}
         j = 0
         for individual in list(gen):
             total_fitness = total_fitness + gen[individual]["Fitness"]
@@ -186,12 +199,12 @@ class Rescuer(AbstractAgent):
         init_interval = 0
 
         for individual in list(gen):
-            final_interval = init_interval + total_fitness / gen[individual]["Fitness"]
+            final_interval = init_interval + gen[individual]["Fitness"]
             individual_portion.append((init_interval, final_interval))
             init_interval = final_interval
 
         while len(survivors) < n_survivors:
-            rand = random.randint(0, total_fitness)
+            rand = random.uniform(0, total_fitness)
             survivor = None
 
             for i in range(len(individual_portion)):
@@ -199,86 +212,83 @@ class Rescuer(AbstractAgent):
                     survivor = gen[i]["Individuo"]
                     fitnessSurvivor = gen[i]["Fitness"]
 
-
             for individuals in list(survivors):
-                if individual == survivors[individuals]["Sobreviventes"]:
+                if survivor == survivors[individuals]["Individuo"]:
                     repeated = True
 
             if not repeated and survivor is not None:
-                survivors[j] = {"Sobreviventes": survivor, "Fitness": fitnessSurvivor}
+                survivors[j] = {"Individuo": survivor, "Fitness": fitnessSurvivor}
                 j = j + 1
 
+            repeated = False
 
         return survivors
 
     def crossover(self, gen, cluster):
-        # Baseado em ordem
-        new_gen = {0: {"Filhos": [], "Fitness": 0}}
-        individual_son_fitness = 0
-        j = 0 # Usando pro dicionário new_gen, pensar em algo depois
-        for father in gen:
-            for j in range(2):
-                n_inherited = int(len(gen[father]["Sobreviventes"]) / 2)
-                inherited = []
-                individual_son = []
-
-                i = 0
-                while i < n_inherited:
-                    index = random.randint(0, n_inherited)
-
-                    if not index in inherited:
-                        inherited.append(index)
-                        i = i + 1
-
-                while individual_son_fitness >= 0 and len(individual_son) < len(cluster):
-                    random_victim = cluster[random.randint(0, len(cluster) - 1)]
-
-                    while random_victim in individual_son:
-                        random_victim = cluster[random.randint(0, len(cluster) - 1)]
-
-                    individual_son.append(random_victim)
-                    individual_son_fitness = self.calc_fitness(individual_son)
-
-                if individual_son_fitness < 0:
-                    individual_son.pop()
-
-                for index in inherited:
-                    if gen[father]["Sobreviventes"][index] in individual_son:
-                        index_on_son = individual_son.index(gen[father]["Sobreviventes"][index])
-                        random_index = random.randint(0, len(individual_son) - 1)
-
-                        individual_son[random_index] = individual_son[index]
-                        individual_son[index] = gen[father]["Sobreviventes"][index]
-
-                    else:
-                        individual_son[index] = gen[father]["Sobreviventes"][index]
-
-                new_gen[j] = {"Filhos": individual_son, "Fitness": individual_son_fitness}
-                j = j + 1
-
-        n_mutation = int(len(new_gen) * 0.01)
-
-        individual_mutants = []
-
+        lenGenOld = len(gen)
+        lenGen = len(gen)
+        new_gen = gen.copy()
+        j = 0
         i = 0
-        while i < n_mutation:
-            index = random.randint(0, len(new_gen) - 1)
+        # 5% de chance de ocorrer mutação no filho 1 ou no filho 2, mutação baseada em ordem
+        mutation1 = random.randint(0, 19)
+        mutation2 = random.randint(0, 19)
+        swapFather1 = []
+        swapFather2 = []
+        while len(new_gen) < (lenGenOld*2):
+            father1 = random.randint(0, (lenGenOld - 1))
+            father2 = random.randint(0, (lenGenOld - 1))
 
-            if not index in individual_mutants:
-                individual_mutants.append(index)
-                i = i + 1
+            while father2 == father1:  # garantindo que vai gerar indices diferentes
+                father2 = random.randint(0, (lenGenOld - 1))
 
-        for index in individual_mutants:
-            atributeA = random.randint(0, len(new_gen[index]) - 1)
-            atributeB = random.randint(0, len(new_gen[index]) - 1)
+            crossoverRange = random.randint(2, len(cluster) - 1)
 
-            while atributeB == atributeA:
-                atributeB = random.randint(0, len(new_gen[index]) - 1)
+            new_gen[lenGen] = {"Individuo": gen[father2]["Individuo"].copy()}  # Filho 1
+            new_gen[lenGen + 1] = {"Individuo": gen[father1]["Individuo"].copy()}  # Filho 2
 
-            aux = new_gen[index][atributeA]
+            for j in range(0, crossoverRange):
+                new_gen[lenGen]["Individuo"][j] = gen[father1]["Individuo"][j]
+                for k in range(crossoverRange, len(new_gen[lenGen]["Individuo"])):
+                    if new_gen[lenGen]["Individuo"][j] == new_gen[lenGen]["Individuo"][k]:
+                        swapFather1.append(k)
 
-            new_gen[index][atributeA] = new_gen[index][atributeB]
-            new_gen[index][atributeB] = aux
+                new_gen[lenGen + 1]["Individuo"][j] = gen[father2]["Individuo"][j]
+                for k in range(crossoverRange, len(new_gen[lenGen + 1]["Individuo"])):
+                    if new_gen[lenGen + 1]["Individuo"][j] == new_gen[lenGen + 1]["Individuo"][k]:
+                        swapFather2.append(k)
+
+            while len(swapFather1) > 0:
+                index1 = swapFather1.pop()
+                index2 = swapFather2.pop()
+                auxiliar = new_gen[lenGen]["Individuo"][index1]
+                new_gen[lenGen]["Individuo"][index1] = new_gen[lenGen + 1]["Individuo"][index2]
+                new_gen[lenGen + 1]["Individuo"][index2] = auxiliar
+
+            mutation = random.randint(0, 19)
+            if mutation1 == mutation:
+                indexMutation1 = random.randint(0, len(new_gen[lenGen]["Individuo"]) - 1)
+                indexMutation2 = random.randint(0, len(new_gen[lenGen]["Individuo"]) - 1)
+                while indexMutation2 == indexMutation1:  # garantindo que vai gerar indices diferentes
+                    indexMutation2 = random.randint(0, len(new_gen[lenGen]["Individuo"]) - 1)
+                auxiliarMutation = new_gen[lenGen]["Individuo"][indexMutation1]
+                new_gen[lenGen]["Individuo"][indexMutation1] = new_gen[lenGen]["Individuo"][indexMutation2]
+                new_gen[lenGen]["Individuo"][indexMutation2] = auxiliarMutation
+
+            if mutation2 == mutation:
+                indexMutation1 = random.randint(0, len(new_gen[lenGen + 1]["Individuo"]) - 1)
+                indexMutation2 = random.randint(0, len(new_gen[lenGen + 1]["Individuo"]) - 1)
+                while indexMutation2 == indexMutation1:  # garantindo que vai gerar indices diferentes
+                    indexMutation2 = random.randint(0, len(new_gen[lenGen + 1]["Individuo"]) - 1)
+                auxiliarMutation = new_gen[lenGen + 1]["Individuo"][indexMutation1]
+                new_gen[lenGen + 1]["Individuo"][indexMutation1] = new_gen[lenGen + 1]["Individuo"][indexMutation2]
+                new_gen[lenGen + 1]["Individuo"][indexMutation2] = auxiliarMutation
+
+            new_gen[lenGen]["Fitness"] = self.calc_fitness(new_gen[lenGen]["Individuo"])
+            new_gen[lenGen + 1]["Fitness"] = self.calc_fitness(new_gen[lenGen + 1]["Individuo"])
+            mutation1 = random.randint(0, 19)
+            mutation2 = random.randint(0, 19)
+            lenGen += 2
 
         return new_gen
 
@@ -289,12 +299,12 @@ class Rescuer(AbstractAgent):
         if None in states:
             return 0
 
-        victim_pos = (self.victims[0][0], self.victims[0][1])  ## (x,y)
+        victim_pos = (self.victims[states[0]][0], self.victims[states[0]][1])  ## (x,y)
         cost = self.Astar((0, 0), victim_pos, self.know_space, self.walls, self.ends)["cost"]
 
         for i in range(len(states) - 1):
             origin = victim_pos
-            victim_pos = victim_pos = (self.victims[i + 1][0], self.victims[i + 1][1])  ## (x,y)
+            victim_pos = (self.victims[states[i + 1]][0], self.victims[states[i + 1]][1])  ## (x,y)
             cost = cost + self.Astar(origin, victim_pos, self.know_space, self.walls, self.ends)["cost"]
 
         origin = victim_pos

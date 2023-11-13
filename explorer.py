@@ -3,6 +3,11 @@
 ### It walks randomly in the environment looking for victims.
 
 import random
+import pandas as pd
+import numpy as np
+from sklearn import tree
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
 from math import sqrt
@@ -10,7 +15,7 @@ import math
 
 
 class Explorer(AbstractAgent):
-    visitados = [] # Todos os espaços visitados por todos os exploradores
+    visitados = []  # Todos os espaços visitados por todos os exploradores
     paredes = []  # todas paredes descobertas por todos os exploradores
     vitimas = []  # todas vitimas descobertas por todos os exploradores
     fins = []
@@ -21,6 +26,7 @@ class Explorer(AbstractAgent):
     socorristasAcordar = []  # lista que guarda os socorristas a serem acordados
 
     def completaMapa(self, know_states, walls, victims, ends, resc):
+        victimNew = []
         for i in walls:
             if not Explorer.paredes.__contains__(i):
                 Explorer.paredes.append(i)
@@ -39,6 +45,7 @@ class Explorer(AbstractAgent):
 
         Explorer.exploradoresBase += 1
         Explorer.socorristasAcordar.append(resc)
+
         for i in Explorer.vitimas:
             if not Explorer.victims_for_clustering.__contains__((i[0], i[1], i[3])):
                 Explorer.victims_for_clustering.append(
@@ -56,10 +63,12 @@ class Explorer(AbstractAgent):
             Explorer.maxY = self.max_y
 
         if Explorer.exploradoresBase == 4:
-            cluster = Explorer.cluster(self, Explorer.victims_for_clustering, 4, Explorer.maxX, Explorer.maxY)
+            clusters = Explorer.cluster(self, Explorer.victims_for_clustering, 4, Explorer.maxX, Explorer.maxY)
             i = 0
+            print(clusters)
             for socorrista in Explorer.socorristasAcordar:
-                socorrista.go_save_victims(Explorer.visitados, Explorer.vitimas, Explorer.fins, Explorer.paredes, cluster[i])
+                socorrista.go_save_victims(Explorer.visitados, Explorer.vitimas, Explorer.fins, Explorer.paredes,
+                                           clusters[i])
                 i += 1
 
     def cluster(self, victims, k, max_x, max_y):
@@ -67,6 +76,7 @@ class Explorer(AbstractAgent):
         centroides_anteriores = [None] * k  # A distancia de cada vítima em relação ao centroide associado à ela
         x_axis = []
         y_axys = []
+        z_axys = []
         cluster = []
         victim_centroid_distance = []
 
@@ -92,13 +102,14 @@ class Explorer(AbstractAgent):
         for v in victims:
             x_axis.append(v[0])
             y_axys.append(v[1])
+            z_axys.append(v[2])
 
         # Determinando centroides em posições aleatórias
         for i in range(k):
             # 4 é a gravidade máxima dos ferimentos da vítima
             centroides.append(
                 (
-                    random.uniform(0.0, max_x + 1), random.uniform(0.0, max_y + 1)
+                    random.uniform(0.0, max_x + 1), random.uniform(0.0, max_y + 1), random.uniform(0.0, 5),
                     # Mais um pois, max_x pode ser por exemplo, 19, então para incluir 19 no random, tem que aumentar em um, max_x e max_y
                 )
             )
@@ -108,6 +119,7 @@ class Explorer(AbstractAgent):
             cluster = []
             dots_x = []
             dots_y = []
+            dots_z = []
 
             if centroides == centroides_anteriores:
                 not_chage_count += 1
@@ -119,13 +131,14 @@ class Explorer(AbstractAgent):
 
             for i in range(k):
                 for j in range(len(victims)):
-                    distance_of_i_centroid = Explorer.calcula_distancia(self, x_axis[j], y_axys[j], centroides[i][0],
-                                                                        centroides[i][1])
+                    distance_of_i_centroid = Explorer.calcula_distancia(self,
+                                                                        x_axis[j],
+                                                                        y_axys[j],
+                                                                        z_axys[j],
+                                                                        centroides[i][0],
+                                                                        centroides[i][1],
+                                                                        centroides[i][2])
                     victim_centroid_distance[i][j] = distance_of_i_centroid
-                    # dots_x.append(victims_phys_dis[j])
-                    # dots_y.append(victims[j][2])
-                    dots_x.append(x_axis)
-                    dots_y.append(y_axys)
 
             for i in range(len(victims)):
                 cluster_index = 0
@@ -139,10 +152,12 @@ class Explorer(AbstractAgent):
 
             # Calculando novos centroides
             for i in range(k):
-                victim_dis_sum = 0
-                victim_label_sum = 0
+                victim_x_sum = 0
+                victim_y_sum = 0
+                victim_z_sum = 0
                 new_cent_x = 0
                 new_cent_y = 0
+                new_cent_z = 0
 
                 if len(cluster[i]) > 0:
                     for j in range(len(cluster[i])):
@@ -150,25 +165,30 @@ class Explorer(AbstractAgent):
                         # victim_dis_sum += victim_centroid_distance[i][victim_index]
                         # victim_label_sum += victims[victim_index][2]
 
-                        victim_dis_sum += x_axis[victim_index]
-                        victim_label_sum += y_axys[victim_index]
+                        victim_x_sum += x_axis[victim_index]
+                        victim_y_sum += y_axys[victim_index]
+                        victim_z_sum += z_axys[victim_index]
 
-                    new_cent_x = victim_dis_sum / len(cluster[i])
-                    new_cent_y = victim_label_sum / len(cluster[i])
+                    new_cent_x = victim_x_sum / len(cluster[i])
+                    new_cent_y = victim_y_sum / len(cluster[i])
+                    new_cent_z = victim_z_sum / len(cluster[i])
 
                 else:
                     new_cent_x = random.uniform(0.0, max_x + 1)
                     new_cent_y = random.uniform(0.0, max_y + 1)
+                    new_cent_z = random.uniform(0.0, 5)
 
                 centroides_anteriores[i] = centroides[i]
-                centroides[i] = (new_cent_x, new_cent_y)
+                centroides[i] = (new_cent_x, new_cent_y, new_cent_z)
 
             x = []
             y = []
+            z = []
 
             for cent in centroides:
                 x.append(cent[0])
                 y.append(cent[1])
+                z.append(cent[2])
 
             #  kmeans_visualize(x, y, dots_x, dots_y)
 
@@ -176,16 +196,19 @@ class Explorer(AbstractAgent):
 
         # for c in cluster:
         # print(c)
+
         return cluster
 
-    def calcula_distancia(self, x, y, x1, y1):
+    def calcula_distancia(self, x, y, z, x1, y1, z1):
         c1 = 0
         c2 = 0
+        c3 = 0
 
         c1 = x - x1
         c2 = y - y1
+        c3 = z - z1
 
-        return math.sqrt(c1 * c1 + c2 * c2)
+        return math.sqrt(c1 * c1 + c2 * c2 + c3 * c3)
 
     def __init__(self, env, config_file, resc, name):
         """ Construtor do agente random on-line
@@ -208,93 +231,17 @@ class Explorer(AbstractAgent):
         self.voltar = False
         self.COST_BACK = 0
         self.unback = []
-        self.victims = []  # (x,y,index)
+        self.victims = []  # (x,y,seq,label)
         self.max_x = 0
         self.max_y = 0
         self.x = 0
         self.y = 0
+        self.total = self.rtime / 2
         self.map = []  # Cada elemento da coleção é um conjunto de 3 valores
         # que representam respectivamente: a posição relativa à
         # base (x e y) e o elemento encontrado nela,
         # esse ultimo podendo ser CLEAR = 0, WALL = 1, END = 2
         # e VICTIM = 3
-
-    def costH(self, position, destiny):
-        return int(sqrt((position[0] - destiny[0]) ** 2 + (position[1] - destiny[1]) ** 2))
-
-    def Astar(self, position):
-        disponiveis = {}
-        checado = {}
-        fronteira = []
-        destino = (0, 0)
-        disponiveis[position] = {"g(n)": 0, "h(n)": self.costH(position, destino), "pai": None}
-        while True:
-            atual = None
-            menor_f_caminho = 678542906
-            for i in disponiveis.keys():
-                if (disponiveis[i]["g(n)"] + disponiveis[i]["h(n)"]) <= menor_f_caminho:
-                    menor_f_caminho = disponiveis[i]["g(n)"] + disponiveis[i]["h(n)"]
-                    atual = i
-            checado[atual] = disponiveis[atual]
-            del disponiveis[atual]
-            if atual == destino:
-                break
-
-            if not (atual[0], atual[1] - 1) in checado and (atual[0], atual[1] - 1) in self.visitedStates:
-                fronteira.append((0, -1))
-
-            if not (atual[0] + 1, atual[1] - 1) in checado and (atual[0] + 1, atual[1] - 1) in self.visitedStates:
-                fronteira.append((1, -1))
-
-            if not (atual[0] + 1, atual[1]) in checado and (atual[0] + 1, atual[1]) in self.visitedStates:
-                fronteira.append((1, 0))
-
-            if not (atual[0] + 1, atual[1] + 1) in checado and (atual[0] + 1, atual[1] + 1) in self.visitedStates:
-                fronteira.append((1, 1))
-
-            if not (atual[0], atual[1] + 1) in checado and (atual[0], atual[1] + 1) in self.visitedStates:
-                fronteira.append((0, 1))
-
-            if not (atual[0] - 1, atual[1] + 1) in checado and (atual[0] - 1, atual[1] + 1) in self.visitedStates:
-                fronteira.append((-1, 1))
-
-            if not (atual[0] - 1, atual[1]) in checado and (atual[0] - 1, atual[1]) in self.visitedStates:
-                fronteira.append((-1, 0))
-
-            if not (atual[0] - 1, atual[1] - 1) in checado and (atual[0] - 1, atual[1] - 1) in self.visitedStates:
-                fronteira.append((-1, -1))
-
-            for opt in fronteira:
-                nextPosOpt = (atual[0] + opt[0], atual[1] + opt[1])
-                if nextPosOpt in checado.keys() or nextPosOpt in self.walls or nextPosOpt in self.ends:
-                    continue
-
-                # gets the cost of the movement
-                if opt[0] != 0 and opt[1] != 0:
-                    movCost = self.COST_DIAG
-                else:
-                    movCost = self.COST_LINE
-
-                if nextPosOpt not in disponiveis.keys():
-                    disponiveis[nextPosOpt] = {
-                        "g(n)": checado[atual]["g(n)"] + movCost,
-                        "h(n)": self.costH(nextPosOpt, destino),
-                        "pai": atual,
-                    }
-                elif (checado[atual]["g(n)"] + movCost) < disponiveis[nextPosOpt]["g(n)"]:
-                    disponiveis[nextPosOpt]["g(n)"] = checado[atual]["g(n)"] + movCost
-                    disponiveis[nextPosOpt]["pai"] = atual
-            fronteira = []
-
-            # Builds path
-        atual = destino
-        path = []
-
-        while not atual == position:
-            newMov = (atual[0] - checado[atual]["pai"][0], atual[1] - checado[atual]["pai"][1])
-            path.append(newMov)
-            atual = checado[atual]["pai"]
-        return {"path": list(reversed(path)), "cost": checado[destino]["g(n)"]}
 
     def deliberate(self) -> bool:
         """ The agent chooses the next action. The simulator calls this
@@ -302,16 +249,16 @@ class Explorer(AbstractAgent):
 
         dx = 0
         dy = 0
-
         actions = []  # lista de ações possiveis
         # No more actions, time almost ended
-        if self.pathHome["cost"] < (self.rtime - (self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ) and not self.voltar:
+        if self.pathHome["cost"] < (self.rtime - (
+        self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ) and not self.voltar:
             # Check the neighborhood obstacles
             obstacles = self.body.check_obstacles()
             for i in range(0, len(obstacles) - 1):
 
-                if i == 0:
-                    pos = (dx, dy - 1)
+                if i == 6:
+                    pos = (dx - 1, dy)
 
                 elif i == 1:
                     pos = (dx + 1, dy - 1)
@@ -328,14 +275,15 @@ class Explorer(AbstractAgent):
                 elif i == 5:
                     pos = (dx - 1, dy + 1)
 
-                elif i == 6:
-                    pos = (dx - 1, dy)
+                elif i == 0:
+                    pos = (dx, dy - 1)
 
                 else:
                     pos = (dx - 1, dy - 1)
 
                 if obstacles[i] == 0:
-                    if not ((self.x + pos[0], self.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
+                    if not ((self.x + pos[0], self.y + pos[
+                        1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
                         actions.append(pos)
                 elif obstacles[i] == 1:
                     if not (self.x + pos[0], self.y + pos[1]) in self.walls:
@@ -363,7 +311,7 @@ class Explorer(AbstractAgent):
             self.y += dy
 
             position = (self.x, self.y)
-            self.pathHome = super().Astar(position, (0,0), self.visitedStates, self.walls, self.ends)
+            self.pathHome = super().Astar(position, (0, 0), self.visitedStates, self.walls, self.ends)
 
             if not ((self.x, self.y) in self.visitedStates) and not (
                     (self.x, self.y) in self.walls) and not (
@@ -396,8 +344,10 @@ class Explorer(AbstractAgent):
                     vs = self.body.read_vital_signals(seq)
                     # vitima é representada por um conjunto de 3 valores.
                     # (dx, dy, index)
-                    if not ((self.x, self.y, seq, vs[7]) in self.victims):
-                        self.victims.append((self.x, self.y, seq, vs[7]))
+                    B = np.reshape(vs[3:6], (-1, 3))
+                    pred = self.fitting(criterion='entropy', splitting='best', mdepth=6, X_pred=B)
+                    if not ((self.x, self.y, seq, pred[0]) in self.victims):
+                        self.victims.append((self.x, self.y, seq, pred[0]))
 
                     self.rtime -= self.COST_READ
                     # print("exp: read vital signals of " + str(seq))
@@ -422,3 +372,49 @@ class Explorer(AbstractAgent):
                 return False
 
         return True
+
+    def fitting(self, criterion, splitting, mdepth, X_pred):
+        # Faz a separação dos dados de treino e teste e pode não ser usado se o professor der os dois separados ou
+        # se o professor der apenas os dados de teste, ai usamos os dados que temos pra treino
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+        col_names = ['ID', 'p_Sist', 'p_Diast', 'qualPres', 'pulso', 'resp', 'gravidade', 'clas_grav']
+        data = pd.read_csv('datasets/data_800vic/sinais_vitais.txt', names=col_names, index_col=None)
+
+        model = tree.DecisionTreeClassifier(
+            criterion=criterion,
+            splitter=splitting,
+            max_depth=mdepth,
+            max_leaf_nodes=6,
+            random_state=0
+        )
+
+        # Faz o treino do modelo com as features(qualPres, pulso, resp) X e as classes(gravidade) y
+        clf = model.fit(data[['qualPres', 'pulso', 'resp']].values, data[['clas_grav']])
+
+        # Faz a predição
+        prediction = model.predict(X_pred)
+
+        # print('*************** Tree Summary ***************')
+        # print('Classes: ', clf.classes_)
+        # print('Tree Depth: ', clf.get_depth())
+        # print('No. of leaves: ', clf.get_n_leaves())
+        # print('No. of features: ', clf.n_features_in_)
+        # print('--------------------------------------------------------')
+        # print("")
+
+        # print('*************** Evaluation on Test Data ***************')
+
+        # score_te = model.score(X_test, y_test)
+        # print('Accuracy Score: ', score_te)
+        # print(classification_report(y_pred, pred_label_test, zero_division=0))
+        # print('--------------------------------------------------------')
+        # print("")
+
+        # print('*************** Evaluation on Training Data ***************')
+        # score_tr = model.score(X_train, y_train)
+        # print('Accuracy Score: ', score_tr)
+        # print(classification_report(y_train, pred_label_train, zero_division=0))
+        # print('--------------------------------------------------------')
+
+        return prediction
