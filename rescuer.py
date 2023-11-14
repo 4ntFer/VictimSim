@@ -131,10 +131,10 @@ class Rescuer(AbstractAgent):
         fitnessIndividual = 0
         ## Encapsular o individuo é uma boa ideia para não precisar recalcular o seu fitness
         i = 0
-        repeated = False
         while i < init_n_states and i < bound:
             individual = []
-
+            individuals = 0
+            repeated = False
             while len(individual) < len(cluster):
                 random_victim = cluster[random.randint(0, len(cluster) - 1)]
 
@@ -143,10 +143,10 @@ class Rescuer(AbstractAgent):
 
                 individual.append(random_victim)
 
-            while not repeated:
-                for individuals in list(gen):
-                    if individual == gen[individuals]["Individuo"]:
-                        repeated = True
+            while not repeated and individuals < (len(gen) - 1):
+                if individual == gen[individuals]["Individuo"]:
+                    repeated = True
+                individuals += 1
 
             print(repeated, i)
 
@@ -161,8 +161,6 @@ class Rescuer(AbstractAgent):
             if not repeated:
                 gen[i] = {"Individuo": individual, "Fitness": fitnessIndividual}
                 i = i + 1
-
-            repeated = False
 
         ##quantas iterações? quanto é o fitness ideal?
 
@@ -233,9 +231,11 @@ class Rescuer(AbstractAgent):
         # 5% de chance de ocorrer mutação no filho 1 ou no filho 2, mutação baseada em ordem
         mutation1 = random.randint(0, 19)
         mutation2 = random.randint(0, 19)
+        boolVetor1 = [-1] * (max(cluster) + 1)
+        boolVetor2 = [-1] * (max(cluster) + 1)
         swapFather1 = []
         swapFather2 = []
-        while len(new_gen) < (lenGenOld*2):
+        while len(new_gen) < (lenGenOld * 2):
             father1 = random.randint(0, (lenGenOld - 1))
             father2 = random.randint(0, (lenGenOld - 1))
 
@@ -243,20 +243,21 @@ class Rescuer(AbstractAgent):
                 father2 = random.randint(0, (lenGenOld - 1))
 
             crossoverRange = random.randint(2, len(cluster) - 1)
-
             new_gen[lenGen] = {"Individuo": gen[father2]["Individuo"].copy()}  # Filho 1
             new_gen[lenGen + 1] = {"Individuo": gen[father1]["Individuo"].copy()}  # Filho 2
 
-            for j in range(0, crossoverRange):
-                new_gen[lenGen]["Individuo"][j] = gen[father1]["Individuo"][j]
-                for k in range(crossoverRange, len(new_gen[lenGen]["Individuo"])):
-                    if new_gen[lenGen]["Individuo"][j] == new_gen[lenGen]["Individuo"][k]:
-                        swapFather1.append(k)
+            for j in range(0, (len(cluster))):
+                if j < crossoverRange:
+                    new_gen[lenGen]["Individuo"][j] = gen[father1]["Individuo"][j]
+                    boolVetor1[gen[father1]["Individuo"][j]] = 0
 
-                new_gen[lenGen + 1]["Individuo"][j] = gen[father2]["Individuo"][j]
-                for k in range(crossoverRange, len(new_gen[lenGen + 1]["Individuo"])):
-                    if new_gen[lenGen + 1]["Individuo"][j] == new_gen[lenGen + 1]["Individuo"][k]:
-                        swapFather2.append(k)
+                    new_gen[lenGen + 1]["Individuo"][j] = gen[father2]["Individuo"][j]
+                    boolVetor2[gen[father2]["Individuo"][j]] = 0
+                else:
+                    if boolVetor1[new_gen[lenGen]["Individuo"][j]] == 0:
+                        swapFather1.append(j)
+                    if boolVetor2[new_gen[lenGen + 1]["Individuo"][j]] == 0:
+                        swapFather2.append(j)
 
             while len(swapFather1) > 0:
                 index1 = swapFather1.pop()
@@ -289,6 +290,8 @@ class Rescuer(AbstractAgent):
             mutation1 = random.randint(0, 19)
             mutation2 = random.randint(0, 19)
             lenGen += 2
+            boolVetor1 = [-1] * (max(cluster) + 1)
+            boolVetor2 = [-1] * (max(cluster) + 1)
 
         return new_gen
 
