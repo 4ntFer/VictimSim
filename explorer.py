@@ -249,16 +249,17 @@ class Explorer(AbstractAgent):
 
         dx = 0
         dy = 0
+        newstate = (0, 0)
         actions = []  # lista de ações possiveis
         # No more actions, time almost ended
         if self.pathHome["cost"] < (self.rtime - (
-        self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ) and not self.voltar:
+                self.COST_DIAG if self.COST_DIAG > self.COST_LINE else self.COST_LINE) - self.COST_READ) and not self.voltar:
             # Check the neighborhood obstacles
             obstacles = self.body.check_obstacles()
             for i in range(0, len(obstacles) - 1):
 
-                if i == 6:
-                    pos = (dx - 1, dy)
+                if i == 0:
+                    pos = (dx, dy - 1)
 
                 elif i == 1:
                     pos = (dx + 1, dy - 1)
@@ -275,15 +276,14 @@ class Explorer(AbstractAgent):
                 elif i == 5:
                     pos = (dx - 1, dy + 1)
 
-                elif i == 0:
-                    pos = (dx, dy - 1)
+                elif i == 6:
+                    pos = (dx - 1, dy)
 
                 else:
                     pos = (dx - 1, dy - 1)
 
                 if obstacles[i] == 0:
-                    if not ((self.x + pos[0], self.y + pos[
-                        1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
+                    if not ((self.x + pos[0], self.y + pos[1]) in self.visitedStates):  # Se a posição que ele quer ir, não foi visitada, pode ir pra actions
                         actions.append(pos)
                 elif obstacles[i] == 1:
                     if not (self.x + pos[0], self.y + pos[1]) in self.walls:
@@ -293,13 +293,19 @@ class Explorer(AbstractAgent):
                         self.ends.append((self.x + pos[0], self.y + pos[1]))
 
             if not len(actions) == 0:
-                # newstate = actions.pop()
-                newstate = random.choice(actions)  # Escolhe aleatoriamente uma ação
+                if self.name == 1 and (-1, 0) in actions and self.total < self.rtime:
+                    newstate = (-1, 0)
+                elif self.name == 2 and (0, -1) in actions and self.total < self.rtime:
+                    newstate = (0, -1)
+                elif self.name == 3 and (0, 1) in actions and self.total < self.rtime:
+                    newstate = (0, 1)
+                else:
+                    action = random.randint(0, len(actions) - 1)
+                    newstate = actions[action]  # Escolhe aleatoriamente uma ação
                 dx = newstate[0]
                 dy = newstate[1]
                 self.unback.append((-dx, -dy))
                 result = self.body.walk(dx, dy)
-
 
             else:  # Se não há ações disponíveis, ele volta uma posição com o 'self.unback.pop()'
                 newstate = self.unback.pop()
