@@ -4,6 +4,7 @@ import pygame
 import random
 import csv
 import time
+from math import sqrt
 
 ## Class PhysAgent
 """ It is the representation of an agent in the environment
@@ -50,8 +51,7 @@ class PhysAgent:
         @return: True - time exceeded
                  False - time not exceeded"""
         if self.rtime < 0.0:
-           return True
-        
+            return True
         return False
 
     def at_base(self):
@@ -210,11 +210,3 @@ class PhysAgent:
             v = v + 1
   
         return victims
-
-    def getX(self):
-        return self.x
-
-    def getY(self):
-        return self.y
-                
-            
