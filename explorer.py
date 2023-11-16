@@ -243,6 +243,9 @@ class Explorer(AbstractAgent):
         # esse ultimo podendo ser CLEAR = 0, WALL = 1, END = 2
         # e VICTIM = 3
 
+    def cost(self, position, destiny):
+        return int(sqrt((position[0] - destiny[0]) ** 2 + (position[1] - destiny[1]) ** 2))
+
     def deliberate(self) -> bool:
         """ The agent chooses the next action. The simulator calls this
         method at each cycle. Must be implemented in every agent"""
@@ -293,12 +296,14 @@ class Explorer(AbstractAgent):
                         self.ends.append((self.x + pos[0], self.y + pos[1]))
 
             if not len(actions) == 0:
-                if self.name == 1 and (-1, 0) in actions and self.total < self.rtime:
-                    newstate = (-1, 0)
-                elif self.name == 2 and (0, -1) in actions and self.total < self.rtime:
-                    newstate = (0, -1)
-                elif self.name == 3 and (0, 1) in actions and self.total < self.rtime:
-                    newstate = (0, 1)
+                if self.name == 1 and (-1, -1) in actions and self.total < self.rtime:
+                    newstate = (-1, -1)
+                elif self.name == 2 and (1, -1) in actions and self.total < self.rtime:
+                    newstate = (1, -1)
+                elif self.name == 3 and (1, 1) in actions and self.total < self.rtime:
+                    newstate = (1, 1)
+                elif self.name == 4 and (-1, 1) in actions and self.total < self.rtime:
+                    newstate = (-1, 1)
                 else:
                     action = random.randint(0, len(actions) - 1)
                     newstate = actions[action]  # Escolhe aleatoriamente uma ação

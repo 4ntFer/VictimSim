@@ -4,6 +4,8 @@
 import math
 import os
 import random
+import time
+
 import numpy as np
 from abstract_agent import AbstractAgent
 from physical_agent import PhysAgent
@@ -11,8 +13,23 @@ from physical_agent import PhysAgent
 from matplotlib import pyplot as plt
 
 
-## Classe que define o Agente Rescuer com um plano fixo
+# Classe que define o Agente Rescuer com um plano fixo
 class Rescuer(AbstractAgent):
+    allVictims = []
+    socorristasBase = 0
+
+    def completaVitimas(self, vitimas):
+        for vitima in vitimas:
+            if vitima not in Rescuer.allVictims:
+                Rescuer.allVictims.append(vitima)
+
+        Rescuer.socorristasBase += 1
+        if Rescuer.socorristasBase == 4:
+            for line in Rescuer.allVictims:
+                B = np.reshape(line, (-1, 5))
+                with open("salvas.txt", "ab") as file:
+                    np.savetxt(file, B, delimiter=",", newline='\n', fmt="%d")
+
     def __init__(self, env, config_file, name):
         """
         @param env: a reference to an instance of the environment class
@@ -31,7 +48,7 @@ class Rescuer(AbstractAgent):
         self.name = name
         self.walls = []
         self.ends = []
-        self.victims = []  ## (x,y,seq,condição)
+        self.victims = []  # (x,y,seq,condição)
         self.know_space = []
         self.savedVicitms = []
 
@@ -96,7 +113,8 @@ class Rescuer(AbstractAgent):
         @return False: there's no more action to do """
 
         # No more actions to do
-        if self.plan == []:  # empty list, no more actions to do
+        if not self.plan:  # empty list, no more actions to do
+            Rescuer.completaVitimas(self, self.savedVicitms)
             return False
 
         # Takes the first action of the plan (walk action) and removes it from the plan
@@ -120,16 +138,13 @@ class Rescuer(AbstractAgent):
 
     def build_road_map(self, cluster):
 
-        ## State/cromossomos do AG é um vetor que diz a ordem quem que as vitimas são visitadas
+        # State/cromossomos do AG é um vetor que diz a ordem quem que as vitimas são visitadas
 
-        ## Iniciando primeira geração com cromossomos aleatórios
+        # Iniciando primeira geração com cromossomos aleatórios
 
-        ### Quantos cromossomos iniciais?
         init_n_states = math.factorial(len(cluster))
-        bound = 80
+        bound = 60
         gen = {0: {"Individuo": [], "Fitness": 1}}
-        fitnessIndividual = 0
-        ## Encapsular o individuo é uma boa ideia para não precisar recalcular o seu fitness
         i = 0
         while i < init_n_states and i < bound:
             individual = []
@@ -155,21 +170,21 @@ class Rescuer(AbstractAgent):
 
             fitnessIndividual = self.calc_fitness(individual)
             if fitnessIndividual < 0:
-                individual.pop()
                 continue
 
             if not repeated:
                 gen[i] = {"Individuo": individual, "Fitness": fitnessIndividual}
                 i = i + 1
 
-        ##quantas iterações? quanto é o fitness ideal?
-
-        for i in range(10):  ## Encontrar condição
+        for i in range(10):  # Encontrar condição
             if len(gen) <= 2:
                 break
             print("Iteração:", i)
             survivors = self.natural_selection(gen)
+            inicio = time.time()
             gen = self.crossover(survivors, cluster)
+            fim = time.time()
+            print("Tempo na tela gen: % 10f" % (fim - inicio))
 
         max_fitness = 0
         individual_w_max_fitness = None
@@ -181,7 +196,7 @@ class Rescuer(AbstractAgent):
         return individual_w_max_fitness
 
     def natural_selection(self, gen):
-        ## Por roleta de sorteio
+        # Por roleta de sorteio
         total_fitness = 0
         final_interval = 0.0
         n_survivors = math.ceil(len(gen) / 2)  # a definir
