@@ -320,7 +320,7 @@ class Env:
 
             print(
                 f"{idents}Sum of gravities of all {type_str} victims = {tot_grav:.2f} of a total of {self.sum_gravity:.2f}")
-            print(f"{idents}  % of gravities of all {type_str} victims = {tot_grav / self.sum_gravity:.2f}")
+            #print(f"{idents}  % of gravities of all {type_str} victims = {tot_grav / self.sum_gravity:.2f}")
         else:
             print(f"{idents}No {type_str} victims")
 

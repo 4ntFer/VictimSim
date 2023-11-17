@@ -100,32 +100,28 @@ class AbstractAgent:
             if atual == destino:
                 break
 
-            if not (atual[0], atual[1] - 1) in checado and (atual[0], atual[1] - 1) in known_states:
+            if not (atual[0], atual[1] - 1) in checado:
                 fronteira.append((0, -1))
 
-            if not (atual[0] + 1, atual[1] - 1) in checado and (
-                    atual[0] + 1, atual[1] - 1) in known_states:
+            if not (atual[0] + 1, atual[1] - 1) in checado:
                 fronteira.append((1, -1))
 
-            if not (atual[0] + 1, atual[1]) in checado and (atual[0] + 1, atual[1]) in known_states:
+            if not (atual[0] + 1, atual[1]) in checado:
                 fronteira.append((1, 0))
 
-            if not (atual[0] + 1, atual[1] + 1) in checado and (
-                    atual[0] + 1, atual[1] + 1) in known_states:
+            if not (atual[0] + 1, atual[1] + 1) in checado:
                 fronteira.append((1, 1))
 
-            if not (atual[0], atual[1] + 1) in checado and (atual[0], atual[1] + 1) in known_states:
+            if not (atual[0], atual[1] + 1) in checado :
                 fronteira.append((0, 1))
 
-            if not (atual[0] - 1, atual[1] + 1) in checado and (
-                    atual[0] - 1, atual[1] + 1) in known_states:
+            if not (atual[0] - 1, atual[1] + 1) in checado:
                 fronteira.append((-1, 1))
 
-            if not (atual[0] - 1, atual[1]) in checado and (atual[0] - 1, atual[1]) in known_states:
+            if not (atual[0] - 1, atual[1]) in checado:
                 fronteira.append((-1, 0))
 
-            if not (atual[0] - 1, atual[1] - 1) in checado and (
-                    atual[0] - 1, atual[1] - 1) in known_states:
+            if not (atual[0] - 1, atual[1] - 1) in checado:
                 fronteira.append((-1, -1))
 
             for opt in fronteira:
