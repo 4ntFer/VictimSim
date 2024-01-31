@@ -1,4 +1,6 @@
-Article describing part of the solution available in Portuguese at: https://drive.google.com/file/d/1YNcbbJD-2ucw3Ju98HbFJwi8dS1DTT-1/view?usp=sharing
+Article describing part of the solution available in Portuguese at:
+
+https://drive.google.com/file/d/1YNcbbJD-2ucw3Ju98HbFJwi8dS1DTT-1/view?usp=sharing
 
 # VictimSim
 A simulator for testing search algorithms in rescue scenarios.
